@@ -15,7 +15,8 @@ const connectDB = async () => {
         console.log(`MongoDB Connected: ${conn.connection.host}`);
     } catch (error) {
         console.error(`MongoDB Initial Connection Error: ${error.message}`);
-        process.exit(1);
+        console.warn("Server is continuing without MongoDB connection to allow testing offline features.");
+        // process.exit(1); // Removed so backend can start without DB
     }
 };
 

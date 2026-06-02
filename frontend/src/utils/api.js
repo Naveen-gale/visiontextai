@@ -312,3 +312,15 @@ export async function saveAiCorrection({ originalValue, correctedValue, type, sl
   }
 }
 
+/**
+ * NEW: Predict Theme based on user prompt
+ */
+export async function predictTheme(prompt) {
+  const res = await fetch(`${BASE}/ai/predict-theme`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-session-id": getSessionId() },
+    body: JSON.stringify({ prompt }),
+  });
+  const data = await handleResponse(res, "Predict Theme");
+  return data.theme;
+}

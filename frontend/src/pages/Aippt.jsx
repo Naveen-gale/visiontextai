@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { History as HistoryIcon, Rocket, Sparkles, Presentation } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { generatePptData, uploadPptFile, savePptHistory, generatePptOutline, generatePptSlide, analyzeReferencePpt, generateInsertedSlideData, saveAiCorrection } from "../utils/api";
+import { generatePptData, uploadPptFile, savePptHistory, generatePptOutline, generatePptSlide, analyzeReferencePpt, generateInsertedSlideData, saveAiCorrection, predictTheme } from "../utils/api";
 import { generatePptx, TEMPLATES, FONT_STYLES } from "../utils/pptGenerator";
 import EditableText from "../components/EditableText";
 import HistoryModal from "../components/modals/HistoryModal";
@@ -939,6 +939,9 @@ export default function Aippt() {
   const [fontStyle, setFontStyle] = useState(savedState.fontStyle || "modern");
   const [slideCount, setSlideCount] = useState(savedState.slideCount || 8);
   const [customColors, setCustomColors] = useState(savedState.customColors || null); // { bg, accent, title, body, sub, highlight }
+  const [isPredictingTheme, setIsPredictingTheme] = useState(false);
+  const [suggestedThemeName, setSuggestedThemeName] = useState(null);
+  const [suggestedThemeKey, setSuggestedThemeKey] = useState(null);
 
   // Result state
   const [slides, setSlides] = useState(savedState.slides || []);
@@ -1010,6 +1013,39 @@ export default function Aippt() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const handlePredictTheme = async () => {
+    if (!prompt.trim()) { setError("Please enter a topic or description."); return; }
+    setError("");
+    setIsPredictingTheme(true);
+    try {
+      const themeName = await predictTheme(prompt); // e.g. "Eco Nature"
+      
+      // Find matching key in TEMPLATES
+      let matchedKey = null;
+      for (const [key, tmpl] of Object.entries(TEMPLATES)) {
+        if (tmpl.name.toLowerCase() === themeName.toLowerCase()) {
+          matchedKey = key;
+          break;
+        }
+      }
+      
+      if (matchedKey) {
+        setSuggestedThemeName(themeName);
+        setSuggestedThemeKey(matchedKey);
+        setStep("theme_suggestion");
+      } else {
+        // Fallback if not found
+        setStep("selection");
+      }
+    } catch (err) {
+      console.warn("Theme prediction failed:", err);
+      // Fallback to manual selection
+      setStep("selection");
+    } finally {
+      setIsPredictingTheme(false);
+    }
+  };
+
   // ── Generate PPT Sequential ───────────────────────────────────────────────
   const handleGenerate = async () => {
     if (!prompt.trim()) { setError("Please enter a topic or description."); return; }
@@ -1067,6 +1103,14 @@ export default function Aippt() {
         fontStyle,
         slides: generatedSlides
       }).then(res => setLastSavedId(res._id)).catch(err => console.error("History save failed:", err));
+      
+      // Auto-generate and upload PPT for testing in backend uploads folder
+      try {
+        const tempBlob = await generatePptx(generatedSlides, customColors || template, fontStyle);
+        uploadPptFile(tempBlob, "testing_auto_gen.pptx").catch(e => console.warn("Auto upload failed", e));
+      } catch (err) {
+        console.warn("Failed to generate test PPT automatically", err);
+      }
       
     } catch (err) {
       setError(err.message);
@@ -1475,11 +1519,16 @@ export default function Aippt() {
 
             <div className="grid sm:grid-cols-2 gap-4">
               <button
-                className="w-full py-5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-lg rounded-2xl shadow-xl shadow-purple-500/20 hover:shadow-purple-500/40 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50"
-                onClick={() => setStep("selection")}
-                disabled={!prompt.trim()}
+                className="w-full py-5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-lg rounded-2xl shadow-xl shadow-purple-500/20 hover:shadow-purple-500/40 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                onClick={handlePredictTheme}
+                disabled={!prompt.trim() || isPredictingTheme}
               >
-                ✨ Pick Design & Generate
+                {isPredictingTheme ? (
+                  <>
+                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Analyzing Prompt...</span>
+                  </>
+                ) : "✨ Generate AI Theme Recommendation"}
               </button>
               <button
                 className="w-full py-5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-black text-lg rounded-2xl border border-slate-700 transition-all active:scale-[0.99]"
@@ -1498,10 +1547,43 @@ export default function Aippt() {
         </div>
       )}
 
+      {/* ── STEP: Theme Suggestion ── */}
+      {step === "theme_suggestion" && (
+        <div className="fixed inset-0 z-[120] bg-slate-950 flex flex-col items-center justify-center font-[Outfit] animate-in fade-in zoom-in-95 duration-500 p-4">
+          <div className="bg-slate-900 border border-purple-500/30 rounded-[2rem] p-8 max-w-lg w-full text-center shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-b from-purple-500/10 to-transparent pointer-events-none" />
+            <div className="w-20 h-20 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Sparkles className="w-10 h-10 text-purple-400" />
+            </div>
+            <h2 className="text-3xl font-black text-white mb-2">Theme Suggested!</h2>
+            <p className="text-slate-400 mb-8">
+              Based on your prompt, our AI recommends the <strong className="text-purple-400">{suggestedThemeName}</strong> theme for this presentation.
+            </p>
+            <div className="flex flex-col gap-4 relative z-10">
+              <button
+                className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-lg rounded-2xl shadow-xl hover:scale-[1.02] transition-all"
+                onClick={() => {
+                  setTemplate(suggestedThemeKey);
+                  handleGenerate();
+                }}
+              >
+                Accept & Generate
+              </button>
+              <button
+                className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-black text-lg rounded-2xl border border-slate-700 transition-all hover:scale-[1.02]"
+                onClick={() => setStep("selection")}
+              >
+                Choose My Own
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── STEP: Design Selection (Full Screen) ── */}
       {step === "selection" && (
-        <div className="fixed inset-0 z-[120] bg-slate-950 flex flex-col font-[Outfit] animate-in fade-in zoom-in-95 duration-500">
-           <div className="flex items-center justify-between p-8 border-b border-slate-800 bg-slate-900/50 backdrop-blur-xl">
+        <div className="fixed inset-0 z-[120] bg-slate-950 flex flex-col font-[Outfit] animate-in fade-in zoom-in-95 duration-500 h-screen w-screen overflow-hidden">
+           <div className="flex-none flex items-center justify-between p-8 border-b border-slate-800 bg-slate-900/50 backdrop-blur-xl">
               <div>
                 <h2 className="text-3xl font-black text-white">Choose Your <span className="text-purple-400">Atmosphere</span></h2>
                 <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-1">Select a premium template for your {slideCount} slides</p>
@@ -1509,8 +1591,8 @@ export default function Aippt() {
               <button onClick={() => setStep("input")} className="w-12 h-12 rounded-full flex items-center justify-center bg-slate-800 text-white text-xl hover:bg-red-500 transition-all">✕</button>
            </div>
            
-           <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+           <div className="flex-1 overflow-y-auto min-h-0 p-10 custom-scrollbar" data-lenis-prevent="true">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-20">
                 {Object.entries(TEMPLATES).map(([key, tmpl]) => (
                   <button
                     key={key}

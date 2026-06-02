@@ -515,6 +515,7 @@ export const generatePPTOutline = async (topic, slideCount = 8, styleGuide = nul
     - NO empty pages. Every user's PPT should be unique and highly accurate according to their prompt. Provide a high-level, perfectly structured GPT-like outline.
     - For each slide, determine: "type", "title", and "description".
     - Slide types: "title", "content", "image", "two-column", "quote", "timeline", "stats".
+    - To ensure unique creativity, here is a random seed: ${Math.random()}. Do not generate the exact same outline as previous attempts.
     - Respond strictly with JSON: { "outline": [ ... ] }`;
 
     const response = await callAiWithFallback({
@@ -525,7 +526,7 @@ export const generatePPTOutline = async (topic, slideCount = 8, styleGuide = nul
         ],
         response_format: { type: "json_object" },
         max_tokens: 2000, // Enough for 16+ slides with meaningful descriptions
-        temperature: 0.4,
+        temperature: 0.6,
     });
 
     try {
@@ -601,7 +602,7 @@ export const generateSingleSlideContent = async (topic, outline, slideIndex, sty
     };
     const rule = typeRules[slideMeta.type] || typeRules["content"];
 
-    const systemPrompt = `Generate ONE presentation slide as JSON.
+const systemPrompt = `Generate ONE presentation slide as JSON.
 Topic: "${truncatedTopic}"
 Slide ${slideIndex + 1}/${outline.length} | Type: ${slideMeta.type} | Title: "${slideMeta.title}"
 Brief: ${slideMeta.description}
@@ -613,9 +614,11 @@ Brief: ${slideMeta.description}
 - imageKeyword: ONLY generate an image keyword if the user explicitly said "okay" to images or specifically requested one. Otherwise, leave it empty ("").
 - NO jargon unless explained. NO placeholder text. NO filler.
 - speakerNotes: 1 sentence only.
+- CRITICAL: Arrays (bullets, timelineItems, stats) MUST NOT BE EMPTY! If the type requires an array, you MUST provide at least 3 high-quality items. Empty arrays will crash the system.
+- Random Seed for Uniqueness: ${Math.random()}
 ${styleContext}${learningContext}
 
-Return ONLY valid JSON. Ensure all arrays (bullets, timelineItems, etc.) are NOT empty.`;
+Return ONLY valid JSON. Ensure all arrays (bullets, timelineItems, stats, leftColumn.bullets, rightColumn.bullets) are NOT empty! NEVER leave a slide blank!`;
 
     const response = await callAiWithFallback({
         model: "llama-3.3-70b-versatile",
@@ -625,7 +628,7 @@ Return ONLY valid JSON. Ensure all arrays (bullets, timelineItems, etc.) are NOT
         ],
         response_format: { type: "json_object" },
         max_tokens: 1500, // Increased for more detailed slides
-        temperature: 0.45,
+        temperature: 0.6,
     });
 
     try {

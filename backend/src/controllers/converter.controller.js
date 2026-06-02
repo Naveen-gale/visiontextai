@@ -372,11 +372,12 @@ export const uploadPPT = async (req, res) => {
     }
     try {
         const result = await uploadToImageKit(req.file.path, req.file.originalname || "presentation.pptx");
+        // We will keep the file in the `uploads/` folder for backend testing, 
+        // so we DO NOT unlink it here.
+        console.log(`[Testing] Saved generated PPT to: ${req.file.path}`);
         return res.status(200).json({ success: true, url: result.url, fileId: result.fileId });
     } catch (error) {
         return res.status(500).json({ success: false, error: error.message });
-    } finally {
-        try { await fs.unlink(req.file.path); } catch {}
     }
 };
 
@@ -477,6 +478,36 @@ export const saveLearningData = async (req, res) => {
         console.log(`[Learning] Saved correction in new format: "${originalValue}" -> "${correctedValue}"`);
         return res.status(200).json({ success: true });
     } catch (error) {
+        return res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+/**
+ * POST /api/v1/ai/predict-theme
+ * Body: { prompt: "..." }
+ */
+export const predictTheme = async (req, res) => {
+    const { prompt } = req.body;
+    if (!prompt || prompt.trim().length === 0) {
+        return res.status(400).json({ success: false, error: "No prompt provided." });
+    }
+    
+    try {
+        const flaskUrl = process.env.FLASK_API_URL || "http://localhost:5001";
+        const response = await fetch(`${flaskUrl}/predict-theme`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Flask API returned ${response.status}`);
+        }
+        
+        const data = await response.json();
+        return res.status(200).json(data);
+    } catch (error) {
+        console.error("Theme prediction error:", error);
         return res.status(500).json({ success: false, error: error.message });
     }
 };
