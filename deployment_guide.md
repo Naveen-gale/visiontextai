@@ -23,8 +23,12 @@ Render is great for Python microservices and has a free tier.
    - **Environment**: `Python 3`
    - **Build Command**: `pip install -r requirements.txt`
    - **Start Command**: `gunicorn app:app --bind 0.0.0.0:$PORT`
-5. Click **Create Web Service**.
-6. Wait for the build to complete. Once finished, Render will provide a URL (e.g., `https://theme-predictor-api.onrender.com`).
+5. **CRITICAL STEP FOR PIP ERRORS**: Scroll down and click **Advanced**, then add a new Environment Variable:
+   - **Key**: `PYTHON_VERSION`
+   - **Value**: `3.11.4`
+   *(Render defaults to Python 3.7 which causes `metadata-generation-failed` errors when installing modern packages like scikit-learn 1.3.2. Specifying 3.11.4 fixes this).*
+6. Click **Create Web Service**.
+7. Wait for the build to complete. Once finished, Render will provide a URL (e.g., `https://theme-predictor-api.onrender.com`).
 
 ## 3. Update the Node.js Backend
 
