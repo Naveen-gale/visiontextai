@@ -501,7 +501,8 @@ export const predictTheme = async (req, res) => {
         });
         
         if (!response.ok) {
-            throw new Error(`Flask API returned ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`Flask API returned ${response.status}: ${errorText}`);
         }
         
         const data = await response.json();

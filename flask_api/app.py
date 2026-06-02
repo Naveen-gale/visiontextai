@@ -31,7 +31,7 @@ def predict_theme():
         # The pipeline expects a list of strings
         prediction = model.predict([prompt])
         # It returns a numpy array, we want the first element
-        theme_name = prediction[0]
+        theme_name = str(prediction[0])
         return jsonify({
             "success": True,
             "theme": theme_name
