@@ -406,15 +406,37 @@ async function getLearnedContext(sessionId) {
  * @param {string} sessionId - For personalized learning
  * @param {string} structure - Predicted presentation structure
  */
+const hasImageRequest = (text) => {
+    if (!text) return false;
+    const lower = text.toLowerCase();
+    return (
+        lower.includes("add image") ||
+        lower.includes("add img") ||
+        lower.includes("with image") ||
+        lower.includes("with img") ||
+        lower.includes("include image") ||
+        lower.includes("include img") ||
+        lower.includes("show image") ||
+        lower.includes("show img") ||
+        lower.includes("okay to images") ||
+        (lower.includes("image") && !lower.includes("no image") && !lower.includes("without image")) ||
+        (lower.includes("img") && !lower.includes("no img") && !lower.includes("without img")) ||
+        lower.includes("picture") ||
+        lower.includes("photo") ||
+        lower.includes("illustration")
+    );
+};
+
 export const generatePPTContent = async (prompt, base64Image = null, mimeType = "image/jpeg", slideCount = 8, sessionId = "anonymous", structure = null) => {
     const learningContext = await getLearnedContext(sessionId);
-    // NOTE: structureContext omitted — injecting structure names causes llama to return {"structure":"..."} instead of slides.
-    const structureContext = "";
+    const structureContext = structure ? `\nPRESENTATION STRUCTURE / FLOW: The presentation must be designed strictly following the "${structure}" narrative structure flow. The sequence and layout types of the slides must fit this theme. Make sure to return ONLY a JSON object with a "slides" array containing the slides, and no other fields.\n` : "";
+    const allowImages = hasImageRequest(prompt) || !!base64Image;
+
     const systemPrompt = `You are an expert presentation designer. Your ENTIRE output must be driven by the user's prompt — topic, tone, and structure.
 
 CRITICAL RULES:
-1. SLIDE VARIETY: Use a diverse mix of types. DO NOT repeat the same type consecutively. Types: "title", "content", "image", "two-column", "quote", "timeline", "stats".
-2. Slide 1 MUST be "title". ALL other slides (except possibly a concluding slide) MUST be content-heavy types: "content", "two-column", "timeline", "stats", or "image". NEVER use "title" type for middle slides.
+1. SLIDE VARIETY: Use a diverse mix of types. DO NOT repeat the same type consecutively. Types: ${allowImages ? '"title", "content", "image", "two-column", "quote", "timeline", "stats"' : '"title", "content", "two-column", "quote", "timeline", "stats"'}.
+2. Slide 1 MUST be "title". ALL other slides (except possibly a concluding slide) MUST be content-heavy types: ${allowImages ? '"content", "two-column", "timeline", "stats", or "image"' : '"content", "two-column", "timeline", "stats"'}. NEVER use "title" type for middle slides.
 3. CONTENT per slide:
    - Mix longer, detailed explanations with short, punchy bullet points to ensure the user perfectly understands the PPT output. Make it high-level, perfect output like GPT.
    - "content": 3-5 punchy bullets, each 6-12 words, plus deeper details if needed.
@@ -427,7 +449,7 @@ CRITICAL RULES:
 5. NO EMPTY PAGES. Every user's PPT MUST be unique, highly accurate, and precisely follow their prompt.
 6. SIMPLE DEFINITIONS: For complex terms, always provide a "Simple Definition: [Definition]" bullet. Emulate GPT's clear, educational, and structured presentation style.
 7. NO FILLER: No "Key point here". Just the facts/meaning simply.
-8. imageKeyword: ONLY generate an image keyword if the user explicitly says "okay" to images or specifically requests one. Otherwise, leave it empty ("").
+8. imageKeyword: ${allowImages ? 'ONLY generate an image keyword if the user explicitly says "okay" to images or specifically requests one. Otherwise, leave it empty ("").' : 'DO NOT generate an image keyword. Keep imageKeyword empty ("") and do not use it.'}
 9. NO SELF-BRANDING: NEVER use the words "VisionText AI" or any software names.
 10. RETURN FORMAT: Respond with JSON: { "slides": [ ... ] }
 
@@ -494,6 +516,8 @@ export const generatePPTOutline = async (topic, slideCount = 8, styleGuide = nul
     const learningContext = await getLearnedContext(sessionId);
     const isAuto = slideCount === 0;
     const styleContext = styleGuide ? `Adhere to this design style guide: ${JSON.stringify(styleGuide)}` : "";
+    const structureContext = structure ? `\nPRESENTATION STRUCTURE / FLOW: The outline must be designed strictly following the "${structure}" narrative flow structure. Ensure the sequence and logical progression of slide topics align perfectly with this structure.\n` : "";
+    const allowImages = hasImageRequest(topic);
 
     const systemPrompt = `You are a presentation outline generator. Output a JSON object with one key "outline" whose value is an ARRAY of slide objects.
 
@@ -504,12 +528,12 @@ STRICT RULES:
 1. Return ONLY the JSON object. No markdown. No explanations.
 2. "outline" MUST be an array of slides.
 3. Each slide MUST have "type", "title", "description".
-4. Valid types: "title", "content", "image", "two-column", "quote", "timeline", "stats"
+4. Valid types: ${allowImages ? '"title", "content", "image", "two-column", "quote", "timeline", "stats"' : '"title", "content", "two-column", "quote", "timeline", "stats"'}
 5. First slide must be type "title". Last slide must be a conclusion.
 6. ${isAuto ? "Generate 7-10 slides for the topic depth." : `Generate EXACTLY ${slideCount} slides.`}
 7. Slides must be specific and relevant. No filler.
 8. Do NOT repeat same slide type consecutively.
-${styleContext}${learningContext}`;
+${styleContext}${learningContext}${structureContext}`;
 
     let lastError = null;
     let lastRaw = "";
@@ -625,6 +649,7 @@ export const generateNewInsertedSlide = async (topic, currentSlides, insertIndex
     const nextSlide = insertIndex < currentSlides.length ? currentSlides[insertIndex] : null;
 
     const styleContext = styleGuide ? `Adhere to this design style guide extracted from a reference: ${JSON.stringify(styleGuide)}` : "";
+    const allowImages = hasImageRequest(topic);
 
     const systemPrompt = `You are an expert presentation designer. Generate ONE new slide to be inserted into a deck about "${topic}".
     CONTEXT:
@@ -634,7 +659,7 @@ export const generateNewInsertedSlide = async (topic, currentSlides, insertIndex
     GOAL: Create a slide that bridges the content or adds missing depth.
     - ${styleContext}
     - IMPORTANT: Use styleGuide ONLY for visual theming. DO NOT use its content.
-    - Choose fitting type: "content", "image", "two-column", "quote", "timeline", "stats".
+    - Choose fitting type: ${allowImages ? '"content", "image", "two-column", "quote", "timeline", "stats"' : '"content", "two-column", "quote", "timeline", "stats"'}.
     ${learningContext}
     - Respond strictly with JSON for ONE slide object.`;
 
