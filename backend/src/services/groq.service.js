@@ -529,7 +529,6 @@ ${styleContext}${learningContext}`;
 
             const raw = response.choices[0].message.content;
             lastRaw = raw;
-            console.log(`[generatePPTOutline] Attempt ${attempt + 1} RAW:`, raw.substring(0, 200));
 
             let data;
             try { data = JSON.parse(raw); }
@@ -561,7 +560,6 @@ ${styleContext}${learningContext}`;
             const valid = outline.filter(s => s && s.title && s.type);
             if (valid.length === 0) throw new Error("Slides missing title/type");
 
-            console.log(`[generatePPTOutline] ✅ ${valid.length} slides OK`);
             return valid;
 
         } catch (e) {
@@ -670,60 +668,75 @@ export const generateSingleSlideContent = async (topic, outline, slideIndex, sty
     const truncatedTopic = topic.length > 600 ? topic.substring(0, 600) + "..." : topic;
     const styleContext = styleGuide ? `Style (colors/fonts only): ${JSON.stringify(styleGuide).slice(0, 200)}` : "";
 
-    // Per-type instructions: what fields + concise length guidance
-    const typeRules = {
-        "title":      "title (short, catchy), subtitle (1 line tagline). NO bullets.",
-        "content":    "title, bullets: 3-5 items, each 8-12 words, factual and specific.",
-        "image":      "title, bullets: 2-3 items (8-10 words each), imageKeyword: vivid photorealistic scene.",
-        "two-column": "title, leftColumn {heading, bullets: 3 items, 8-10 words each}, rightColumn {heading, bullets: 3 items, 8-10 words each}.",
-        "quote":      "title, quote (15-25 words, powerful and relevant), author (real name or role).",
-        "timeline":   "title, timelineItems: 4-5 items each with year and event (8-12 words).",
-        "stats":      "title, stats: 4-5 items each with label (2-4 words) and value (number/%). Use realistic data.",
+    const typeExamples = {
+        "title":      `{"type": "title", "title": "Catchy Title", "subtitle": "A one-line tagline"}`,
+        "content":    `{"type": "content", "title": "Main Point", "bullets": ["Fact 1", "Fact 2", "Fact 3"]}`,
+        "image":      `{"type": "image", "title": "Visual Concept", "bullets": ["Detail 1", "Detail 2"], "imageKeyword": "photorealistic abstract concept"}`,
+        "two-column": `{"type": "two-column", "title": "Comparison", "leftColumn": {"heading": "Pros", "bullets": ["Point 1", "Point 2"]}, "rightColumn": {"heading": "Cons", "bullets": ["Point 1", "Point 2"]}}`,
+        "quote":      `{"type": "quote", "title": "Expert Insight", "quote": "The actual quote text", "author": "Name or Role"}`,
+        "timeline":   `{"type": "timeline", "title": "History", "timelineItems": [{"year": "2023", "event": "Launched"}, {"year": "2024", "event": "Expanded"}]}`,
+        "stats":      `{"type": "stats", "title": "By the Numbers", "stats": [{"label": "Growth", "value": "150%"}, {"label": "Users", "value": "1M+"}]}`,
     };
-    const rule = typeRules[slideMeta.type] || typeRules["content"];
+    const example = typeExamples[slideMeta.type] || typeExamples["content"];
 
-const systemPrompt = `Generate ONE presentation slide as JSON.
+    const systemPrompt = `You are a presentation content generator. Return exactly ONE slide in pure JSON format.
+
 Topic: "${truncatedTopic}"
-Slide ${slideIndex + 1}/${outline.length} | Type: ${slideMeta.type} | Title: "${slideMeta.title}"
-Brief: ${slideMeta.description}
+Slide Type: ${slideMeta.type}
+Slide Title: "${slideMeta.title}"
+Slide Brief: ${slideMeta.description}
 
-- Fields to fill: ${rule}
-- Content: USE USER DATA IF PROVIDED. Mix longer, detailed explanations with short, punchy bullet points to ensure the user perfectly understands the PPT output.
-- CHATGPT STYLE: Emulate GPT's high-level, perfect output. Make it clear, highly educational, and well-structured. Provide clear analogies and simple definitions.
-- NO empty pages. EVERY user's PPT MUST be unique, highly accurate, and precisely follow their prompt.
-- imageKeyword: ONLY generate an image keyword if the user explicitly said "okay" to images or specifically requested one. Otherwise, leave it empty ("").
-- NO jargon unless explained. NO placeholder text. NO filler.
-- speakerNotes: 1 sentence only.
-- CRITICAL: Arrays (bullets, timelineItems, stats) MUST NOT BE EMPTY! If the type requires an array, you MUST provide at least 3 high-quality items. Empty arrays will crash the system.
-- Random Seed for Uniqueness: ${Math.random()}
-${styleContext}${learningContext}
+YOUR JSON OUTPUT MUST MATCH THIS EXACT SHAPE:
+${example}
 
-Return ONLY valid JSON. Ensure all arrays (bullets, timelineItems, stats, leftColumn.bullets, rightColumn.bullets) are NOT empty! NEVER leave a slide blank!`;
+STRICT RULES:
+1. Return ONLY valid JSON. No markdown. No explanations.
+2. Fill the JSON with highly accurate, educational, and specific content.
+3. NEVER leave arrays empty (bullets, timelineItems, stats). Provide 3-5 items.
+4. "imageKeyword" is optional.
+5. Emulate ChatGPT's clear and structured output.
+${styleContext}${learningContext}`;
 
-    const response = await callAiWithFallback({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: `Create slide ${slideIndex + 1}: "${slideMeta.title}" (type: ${slideMeta.type})` },
-        ],
-        response_format: { type: "json_object" },
-        max_tokens: 1500, // Increased for more detailed slides
-        temperature: 0.6,
-    });
+    let lastError = null;
 
-    try {
-        const slide = JSON.parse(response.choices[0].message.content);
-        
-        // Post-process image if needed
-        if (slide.imageKeyword) {
-            const seed = Math.floor(Math.random() * 1000000);
-            slide.image = `https://image.pollinations.ai/prompt/${encodeURIComponent(slide.imageKeyword)}?width=800&height=600&seed=${seed}&model=flux&nologo=true`;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            const response = await callAiWithFallback({
+                model: "llama-3.3-70b-versatile",
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: `Generate the JSON for slide ${slideIndex + 1}: "${slideMeta.title}"` },
+                ],
+                response_format: { type: "json_object" },
+                max_tokens: 1500,
+                temperature: 0.5 + (attempt * 0.1),
+            });
+
+            const raw = response.choices[0].message.content;
+
+            let slide;
+            try {
+                slide = JSON.parse(raw);
+            } catch {
+                const match = raw.match(/```(?:json)?\s*([\s\S]*?)```/) || raw.match(/(\{[\s\S]*\})/);
+                if (match) slide = JSON.parse(match[1]);
+                else throw new Error("Invalid JSON");
+            }
+
+            if (slide.imageKeyword) {
+                const seed = Math.floor(Math.random() * 1000000);
+                slide.image = `https://image.pollinations.ai/prompt/${encodeURIComponent(slide.imageKeyword)}?width=800&height=600&seed=${seed}&model=flux&nologo=true`;
+            }
+
+            return slide;
+
+        } catch (e) {
+            console.error(`[generateSingleSlideContent] Attempt ${attempt + 1} failed:`, e.message);
+            lastError = e;
         }
-        
-        return slide;
-    } catch (e) {
-        throw new Error(`Failed to generate slide content for slide ${slideIndex + 1}`);
     }
+
+    throw new Error(`Failed to generate slide content after 3 attempts. Last error: ${lastError?.message}`);
 };
 
 /**
