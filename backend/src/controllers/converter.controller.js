@@ -1,4 +1,4 @@
-import { extractTextFromImage, summarizeText, translateText, fixGrammar, extractKeyInfo, generatePPTContent, generatePPTOutline, generateSingleSlideContent, generateNewInsertedSlide, editSingleSlideContent, editPPTContent, askQuestion, simplifyConcept, generateKnowledgeGraph, suggestionEngine } from "../services/groq.service.js";
+import { extractTextFromImage, summarizeText, translateText, fixGrammar, extractKeyInfo, generatePPTContent, generatePPTOutline, generateSingleSlideContent, generateNewInsertedSlide, editSingleSlideContent, editPPTContent, askQuestion, simplifyConcept, generateKnowledgeGraph, suggestionEngine, predictThemeAi, predictStructureAi } from "../services/groq.service.js";
 import { uploadToImageKit } from "../services/imagekit.service.js";
 import { extractDocumentText, formatDocumentTextWithAI } from "../services/document.service.js";
 import { analyzePPTX } from "../services/pptAnalysis.service.js";
@@ -227,6 +227,7 @@ export const generatePPT = async (req, res) => {
         return res.status(400).json({ success: false, error: "prompt is required." });
     }
     const slideCount = Math.min(Math.max(parseInt(req.body?.slideCount || 8, 10), 4), 20);
+    const structure = req.body?.structure?.trim();
 
     let base64Image = null;
     let mimeType = "image/jpeg";
@@ -245,7 +246,7 @@ export const generatePPT = async (req, res) => {
 
     try {
         const sessionId = req.headers["x-session-id"] || "anonymous";
-        const slides = await generatePPTContent(prompt, base64Image, mimeType, slideCount, sessionId);
+        const slides = await generatePPTContent(prompt, base64Image, mimeType, slideCount, sessionId, structure);
         return res.status(200).json({ success: true, slides });
     } catch (error) {
         return res.status(500).json({ success: false, error: error.message });
@@ -256,12 +257,12 @@ export const generatePPT = async (req, res) => {
  * NEW: Generate Outline
  */
 export const generateOutline = async (req, res) => {
-    const { prompt, slideCount, styleGuide } = req.body;
+    const { prompt, slideCount, styleGuide, structure } = req.body;
     if (!prompt) return res.status(400).json({ success: false, error: "Prompt is required." });
 
     try {
         const sessionId = req.headers["x-session-id"] || "anonymous";
-        const outline = await generatePPTOutline(prompt, slideCount || 8, styleGuide, sessionId);
+        const outline = await generatePPTOutline(prompt, slideCount || 8, styleGuide, sessionId, structure);
         return res.status(200).json({ success: true, outline });
     } catch (error) {
         return res.status(500).json({ success: false, error: error.message });
@@ -493,22 +494,29 @@ export const predictTheme = async (req, res) => {
     }
     
     try {
-        const flaskUrl = process.env.FLASK_API_URL || "http://localhost:5001";
-        const response = await fetch(`${flaskUrl}/predict-theme`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt })
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Flask API returned ${response.status}: ${errorText}`);
-        }
-        
-        const data = await response.json();
-        return res.status(200).json(data);
+        const theme = await predictThemeAi(prompt);
+        return res.status(200).json({ success: true, theme });
     } catch (error) {
         console.error("Theme prediction error:", error);
+        return res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+/**
+ * POST /api/v1/ai/predict-structure
+ * Body: { prompt: "..." }
+ */
+export const predictStructure = async (req, res) => {
+    const { prompt } = req.body;
+    if (!prompt || prompt.trim().length === 0) {
+        return res.status(400).json({ success: false, error: "No prompt provided." });
+    }
+    
+    try {
+        const structure = await predictStructureAi(prompt);
+        return res.status(200).json({ success: true, structure });
+    } catch (error) {
+        console.error("Structure prediction error:", error);
         return res.status(500).json({ success: false, error: error.message });
     }
 };

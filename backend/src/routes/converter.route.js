@@ -23,7 +23,8 @@ import {
     knowledgeGraph,
     getSuggestions,
     saveLearningData,
-    predictTheme
+    predictTheme,
+    predictStructure
 } from "../controllers/converter.controller.js";
 
 const router = Router();
@@ -77,6 +78,7 @@ router.post("/ai/simplify", simplify);
 router.post("/ai/knowledge-graph", knowledgeGraph);
 router.post("/ai/suggestions", getSuggestions);
 router.post("/ai/predict-theme", predictTheme);
+router.post("/ai/predict-structure", predictStructure);
 
 // AI PPT Generation
 router.post("/ai/generate-ppt", pptImageUpload, generatePPT);

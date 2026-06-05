@@ -1,0 +1,16 @@
+[2026-06-05T09:37:10.852Z] generatePPTOutline: Prompt="A presentation about test", ParsedDataKeys=outline, OutlineLength=8, RAW: {
+  "outline": [
+       {
+           "type": "title",
+           "title": "Introduction to Testing",
+           "description": "Brief overview of the presentation's focus on testing"
+       },
+       {
+           "type": "content",
+           "title": "What is Testing?",
+           "description": "Definition and explanation of testing, its importance, and applications"
+       },
+       {
+           "type": "image",
+           "title": "Testing Process",
+           "description": "Illustration of...

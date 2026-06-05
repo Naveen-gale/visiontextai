@@ -404,9 +404,11 @@ async function getLearnedContext(sessionId) {
  * @param {string} mimeType - MIME type of the image
  * @param {number} slideCount - Requested number of slides
  * @param {string} sessionId - For personalized learning
+ * @param {string} structure - Predicted presentation structure
  */
-export const generatePPTContent = async (prompt, base64Image = null, mimeType = "image/jpeg", slideCount = 8, sessionId = "anonymous") => {
+export const generatePPTContent = async (prompt, base64Image = null, mimeType = "image/jpeg", slideCount = 8, sessionId = "anonymous", structure = null) => {
     const learningContext = await getLearnedContext(sessionId);
+    const structureContext = structure ? `\n\nNARRATIVE STRUCTURE: Follow a strictly "${structure}" structure for this presentation. Align the slide flow to match this structural framework perfectly.` : "";
     const systemPrompt = `You are an expert presentation designer. Your ENTIRE output must be driven by the user's prompt — topic, tone, and structure.
 
 CRITICAL RULES:
@@ -426,7 +428,7 @@ CRITICAL RULES:
 7. NO FILLER: No "Key point here". Just the facts/meaning simply. 
 8. imageKeyword: ONLY generate an image keyword if the user explicitly says "okay" to images or specifically requests one. Otherwise, leave it empty ("").
 9. NO SELF-BRANDING: NEVER use the words "VisionText AI" or any software names.
-${learningContext}
+${learningContext}${structureContext}
 
 Respond ONLY with a valid JSON object: { "slides": [ ...slide objects ] }
 Each slide object:
@@ -503,13 +505,14 @@ Each slide object:
 /**
  * PHASE 1: Generate an outline for the presentation
  */
-export const generatePPTOutline = async (topic, slideCount = 8, styleGuide = null, sessionId = "anonymous") => {
+export const generatePPTOutline = async (topic, slideCount = 8, styleGuide = null, sessionId = "anonymous", structure = null) => {
     const learningContext = await getLearnedContext(sessionId);
     const isAuto = slideCount === 0;
     const styleContext = styleGuide ? `Adhere to this design style guide extracted from a reference: ${JSON.stringify(styleGuide)}` : "";
+    const structureContext = structure ? `\n    - NARRATIVE STRUCTURE: Follow a strictly "${structure}" structure for this presentation outline.` : "";
     
     const systemPrompt = `You are a professional presentation architect. Your task is to plan a high-quality presentation.
-    - Create a coherent, engaging narrative flow with a strong opening and clear conclusion.
+    - Create a coherent, engaging narrative flow with a strong opening and clear conclusion.${structureContext}
     - ${isAuto ? "Choose an appropriate slide count based on the topic depth." : `Plan exactly ${slideCount} slides.`}
     - IF USER PROVIDED A LIST OF SLIDES (Slide 1, Slide 2...), USE THEM EXACTLY. DO NOT summarize or skip them.
     - NO empty pages. Every user's PPT should be unique and highly accurate according to their prompt. Provide a high-level, perfectly structured GPT-like outline.
@@ -530,11 +533,97 @@ export const generatePPTOutline = async (topic, slideCount = 8, styleGuide = nul
     });
 
     try {
-        const data = JSON.parse(response.choices[0].message.content);
-        return data.outline || [];
+        const raw = response.choices[0].message.content;
+        console.log("[generatePPTOutline] RAW AI RESPONSE:", raw);
+        
+        const jsonMatch = raw.match(/(\{\s*"outline"[\s\S]*\}\s*\}?)/m) 
+            || raw.match(/(\{\s*"slides"[\s\S]*\}\s*\}?)/m) 
+            || raw.match(/(\[\s*\{[\s\S]*\}\s*\])/m) 
+            || raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+        
+        const jsonStr = jsonMatch ? jsonMatch[1] : raw;
+        const data = JSON.parse(jsonStr);
+        console.log("[generatePPTOutline] PARSED DATA:", JSON.stringify(data).substring(0, 200) + "...");
+        
+        // Helper to find the first array in an object recursively
+        const findArray = (obj) => {
+            if (Array.isArray(obj)) return obj;
+            if (obj && typeof obj === 'object') {
+                for (const key of Object.keys(obj)) {
+                    if (Array.isArray(obj[key])) return obj[key];
+                }
+                for (const key of Object.keys(obj)) {
+                    const found = findArray(obj[key]);
+                    if (found) return found;
+                }
+            }
+            return null;
+        };
+
+        let outline = data.outline || data.slides || data.presentation || data.Outline || data.Slides || data.Presentation;
+        if (!outline && Array.isArray(data)) outline = data;
+        
+        // Deep unwrap if AI returned nested objects or used random keys
+        if (outline && !Array.isArray(outline)) {
+            outline = outline.outline || outline.slides || outline.presentation || Object.values(outline).find(Array.isArray) || null;
+        }
+        
+        // Final fallback: just find the first array anywhere in the JSON
+        if (!Array.isArray(outline)) {
+            outline = findArray(data) || [];
+        }
+        
+        console.log("[generatePPTOutline] FINAL EXTRACTED OUTLINE LENGTH:", outline.length);
+        
+        return outline;
     } catch (e) {
         console.error("Outline Parse Failed:", e.message);
         throw new Error("Failed to generate outline.");
+    }
+};
+
+/**
+ * Predict Theme using Groq
+ */
+export const predictThemeAi = async (prompt) => {
+    const themes = ["Modern Sleek", "Vibrant Gradient", "Minimalist Light", "Midnight Neon", "Executive Blue", "Cyber Future", "Eco Nature", "Royal Gold", "Candy Pop", "Scholar Paper", "Abstract Glass", "High Impact", "Luxury Obsidian", "Neon Nights", "Glassmorphism Blur", "Earthy Neutrals"];
+    try {
+        const response = await callAiWithFallback({
+            model: "llama-3.1-8b-instant",
+            messages: [
+                { role: "system", content: `You are an expert presentation designer. Predict the best design theme for the following presentation topic from this list: ${themes.join(', ')}. Return ONLY the exact theme name.` },
+                { role: "user", content: `Topic: ${prompt}` },
+            ],
+            max_tokens: 50,
+            temperature: 0.2,
+        });
+        const theme = response.choices[0]?.message?.content?.trim() || "Executive Blue";
+        const cleanTheme = themes.find(t => theme.toLowerCase().includes(t.toLowerCase())) || "Executive Blue";
+        return cleanTheme;
+    } catch (error) {
+        console.warn(`Groq predictTheme Failed (${error.message})`);
+        return "Executive Blue"; // fallback
+    }
+};
+
+/**
+ * Predict Structure using Groq
+ */
+export const predictStructureAi = async (prompt) => {
+    try {
+        const response = await callAiWithFallback({
+            model: "llama-3.1-8b-instant",
+            messages: [
+                { role: "system", content: "Predict the best narrative structure (e.g., Problem-Solution, Chronological, Persuasive Pitch, Educational) for a presentation about the user's topic. Return ONLY the structure name, no quotes, no extra text." },
+                { role: "user", content: `Topic: ${prompt}` },
+            ],
+            max_tokens: 50,
+            temperature: 0.2,
+        });
+        return response.choices[0]?.message?.content?.trim() || "Standard";
+    } catch (error) {
+        console.warn(`Groq predictStructure Failed (${error.message})`);
+        return "Standard"; // fallback
     }
 };
 

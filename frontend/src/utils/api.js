@@ -98,10 +98,11 @@ export async function aiExtractInfo(text) {
 /**
  * Send prompt + optional image to backend → returns slides JSON array
  */
-export async function generatePptData({ prompt, image, slideCount = 8 }) {
+export async function generatePptData({ prompt, image, slideCount = 8, structure = null }) {
   const fd = new FormData();
   fd.append("prompt", prompt);
   fd.append("slideCount", String(slideCount));
+  if (structure) fd.append("structure", structure);
   if (image) fd.append("image", image);
   const res = await fetch(`${BASE}/ai/generate-ppt`, { 
     method: "POST", 
@@ -112,11 +113,11 @@ export async function generatePptData({ prompt, image, slideCount = 8 }) {
   return data.slides;
 }
 
-export async function generatePptOutline(prompt, slideCount, styleGuide = null) {
+export async function generatePptOutline(prompt, slideCount, styleGuide = null, structure = null) {
   const res = await fetch(`${BASE}/ai/generate-outline`, {
     method: "POST",
     headers: getHeaders(),
-    body: JSON.stringify({ prompt, slideCount, styleGuide }),
+    body: JSON.stringify({ prompt, slideCount, styleGuide, structure }),
   });
   const data = await handleResponse(res, "Outline Generation");
   return data.outline;
@@ -323,4 +324,17 @@ export async function predictTheme(prompt) {
   });
   const data = await handleResponse(res, "Predict Theme");
   return data.theme;
+}
+
+/**
+ * NEW: Predict Structure based on user prompt
+ */
+export async function predictStructure(prompt) {
+  const res = await fetch(`${BASE}/ai/predict-structure`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-session-id": getSessionId() },
+    body: JSON.stringify({ prompt }),
+  });
+  const data = await handleResponse(res, "Predict Structure");
+  return data.structure;
 }

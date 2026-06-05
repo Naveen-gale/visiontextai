@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { History as HistoryIcon, Rocket, Sparkles, Presentation } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { generatePptData, uploadPptFile, savePptHistory, generatePptOutline, generatePptSlide, analyzeReferencePpt, generateInsertedSlideData, saveAiCorrection, predictTheme } from "../utils/api";
+import { generatePptData, uploadPptFile, savePptHistory, generatePptOutline, generatePptSlide, analyzeReferencePpt, generateInsertedSlideData, saveAiCorrection, predictTheme, predictStructure } from "../utils/api";
 import { generatePptx, TEMPLATES, FONT_STYLES } from "../utils/pptGenerator";
 import EditableText from "../components/EditableText";
 import HistoryModal from "../components/modals/HistoryModal";
@@ -1068,9 +1068,18 @@ export default function Aippt() {
         // For now, only style extraction is used for 'Generate'.
       }
 
+      // Predict Structure
+      setGenStatus({ current: 0, total: slideCount, msg: "Predicting optimal structure..." });
+      let predictedStructure = null;
+      try {
+        predictedStructure = await predictStructure(prompt);
+      } catch (err) {
+        console.warn("Structure prediction failed:", err);
+      }
+
       // 2. Generate Outline
       setGenStatus({ current: 0, total: slideCount, msg: "Architecting presentation outline..." });
-      const outline = await generatePptOutline(prompt, slideCount, currentStyleGuide);
+      const outline = await generatePptOutline(prompt, slideCount, currentStyleGuide, predictedStructure);
       
       if (!outline?.length) throw new Error("AI failed to create an outline. Please try again.");
 
