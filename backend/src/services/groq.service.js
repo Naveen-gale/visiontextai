@@ -573,6 +573,10 @@ export const generatePPTOutline = async (topic, slideCount = 8, styleGuide = nul
             outline = findArray(data) || [];
         }
         
+        if (outline.length === 0) {
+            throw new Error(`AI generated invalid JSON (no array found). Raw: ${JSON.stringify(data).substring(0, 150)}`);
+        }
+        
         console.log("[generatePPTOutline] FINAL EXTRACTED OUTLINE LENGTH:", outline.length);
         
         return outline;
