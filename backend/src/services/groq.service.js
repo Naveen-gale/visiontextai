@@ -521,69 +521,76 @@ export const generatePPTOutline = async (topic, slideCount = 8, styleGuide = nul
     - To ensure unique creativity, here is a random seed: ${Math.random()}. Do not generate the exact same outline as previous attempts.
     - Respond strictly with JSON: { "outline": [ ... ] }`;
 
-    const response = await callAiWithFallback({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: `Outline a ${isAuto ? "professionally structured" : slideCount + "-slide"} presentation about: ${topic}` },
-        ],
-        response_format: { type: "json_object" },
-        max_tokens: 2000, // Enough for 16+ slides with meaningful descriptions
-        temperature: 0.6,
-    });
+    let lastError = null;
+    let lastRaw = "";
 
-    try {
-        const raw = response.choices[0].message.content;
-        console.log("[generatePPTOutline] RAW AI RESPONSE:", raw);
-        
-        const jsonMatch = raw.match(/(\{\s*"outline"[\s\S]*\}\s*\}?)/m) 
-            || raw.match(/(\{\s*"slides"[\s\S]*\}\s*\}?)/m) 
-            || raw.match(/(\[\s*\{[\s\S]*\}\s*\])/m) 
-            || raw.match(/```(?:json)?\s*([\s\S]*?)```/);
-        
-        const jsonStr = jsonMatch ? jsonMatch[1] : raw;
-        const data = JSON.parse(jsonStr);
-        console.log("[generatePPTOutline] PARSED DATA:", JSON.stringify(data).substring(0, 200) + "...");
-        
-        // Helper to find the first array in an object recursively
-        const findArray = (obj) => {
-            if (Array.isArray(obj)) return obj;
-            if (obj && typeof obj === 'object') {
-                for (const key of Object.keys(obj)) {
-                    if (Array.isArray(obj[key])) return obj[key];
+    for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+            const response = await callAiWithFallback({
+                model: "llama-3.3-70b-versatile",
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: `Outline a ${isAuto ? "professionally structured" : slideCount + "-slide"} presentation about: ${topic}` },
+                ],
+                response_format: { type: "json_object" },
+                max_tokens: 2000, 
+                temperature: 0.6 + (attempt * 0.1), // slightly increase creativity on retry
+            });
+
+            const raw = response.choices[0].message.content;
+            lastRaw = raw;
+            console.log(`[generatePPTOutline] Attempt ${attempt} RAW AI RESPONSE:`, raw);
+            
+            const jsonMatch = raw.match(/(\{\s*"outline"[\s\S]*\}\s*\}?)/m) 
+                || raw.match(/(\{\s*"slides"[\s\S]*\}\s*\}?)/m) 
+                || raw.match(/(\[\s*\{[\s\S]*\}\s*\])/m) 
+                || raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+            
+            const jsonStr = jsonMatch ? jsonMatch[1] : raw;
+            const data = JSON.parse(jsonStr);
+
+            // Helper to find the first array in an object recursively
+            const findArray = (obj) => {
+                if (Array.isArray(obj)) return obj;
+                if (obj && typeof obj === 'object') {
+                    for (const key of Object.keys(obj)) {
+                        if (Array.isArray(obj[key])) return obj[key];
+                    }
+                    for (const key of Object.keys(obj)) {
+                        const found = findArray(obj[key]);
+                        if (found) return found;
+                    }
                 }
-                for (const key of Object.keys(obj)) {
-                    const found = findArray(obj[key]);
-                    if (found) return found;
-                }
+                return null;
+            };
+
+            let outline = data.outline || data.slides || data.presentation || data.Outline || data.Slides || data.Presentation;
+            if (!outline && Array.isArray(data)) outline = data;
+            
+            if (outline && !Array.isArray(outline)) {
+                outline = outline.outline || outline.slides || outline.presentation || Object.values(outline).find(Array.isArray) || null;
             }
-            return null;
-        };
-
-        let outline = data.outline || data.slides || data.presentation || data.Outline || data.Slides || data.Presentation;
-        if (!outline && Array.isArray(data)) outline = data;
-        
-        // Deep unwrap if AI returned nested objects or used random keys
-        if (outline && !Array.isArray(outline)) {
-            outline = outline.outline || outline.slides || outline.presentation || Object.values(outline).find(Array.isArray) || null;
+            
+            if (!Array.isArray(outline)) {
+                outline = findArray(data) || [];
+            }
+            
+            if (outline.length === 0) {
+                throw new Error(`AI generated invalid JSON (no array found). Raw: ${JSON.stringify(data).substring(0, 150)}`);
+            }
+            
+            console.log("[generatePPTOutline] FINAL EXTRACTED OUTLINE LENGTH:", outline.length);
+            return outline;
+            
+        } catch (e) {
+            console.error(`[generatePPTOutline] Attempt ${attempt} Failed:`, e.message);
+            lastError = e;
+            // Loop continues to retry...
         }
-        
-        // Final fallback: just find the first array anywhere in the JSON
-        if (!Array.isArray(outline)) {
-            outline = findArray(data) || [];
-        }
-        
-        if (outline.length === 0) {
-            throw new Error(`AI generated invalid JSON (no array found). Raw: ${JSON.stringify(data).substring(0, 150)}`);
-        }
-        
-        console.log("[generatePPTOutline] FINAL EXTRACTED OUTLINE LENGTH:", outline.length);
-        
-        return outline;
-    } catch (e) {
-        console.error("Outline Parse Failed:", e.message);
-        throw new Error("Failed to generate outline.");
     }
+
+    // If both attempts fail
+    throw new Error(`Parse failed: ${lastError.message}. AI response was: ${lastRaw.substring(0, 50)}...`);
 };
 
 /**
