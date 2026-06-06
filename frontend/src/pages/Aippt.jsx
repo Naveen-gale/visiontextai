@@ -1557,7 +1557,7 @@ export default function Aippt() {
       )}
 
       {/* ── STEP: Theme Suggestion ── */}
-      {step === "theme_suggestion" && (
+      {step === "theme_suggestion" && createPortal(
         <div className="fixed inset-0 z-[120] bg-slate-950 flex flex-col items-center justify-center font-[Outfit] animate-in fade-in zoom-in-95 duration-500 p-4">
           <div className="bg-slate-900 border border-purple-500/30 rounded-[2rem] p-8 max-w-lg w-full text-center shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-purple-500/10 to-transparent pointer-events-none" />
@@ -1586,11 +1586,12 @@ export default function Aippt() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-
+ 
       {/* ── STEP: Design Selection (Full Screen) ── */}
-      {step === "selection" && (
+      {step === "selection" && createPortal(
         <div className="fixed inset-0 z-[120] bg-slate-950 flex flex-col font-[Outfit] animate-in fade-in zoom-in-95 duration-500 h-screen w-screen overflow-hidden">
            <div className="flex-none flex items-center justify-between p-8 border-b border-slate-800 bg-slate-900/50 backdrop-blur-xl">
               <div>
@@ -1635,54 +1636,189 @@ export default function Aippt() {
                 ))}
               </div>
            </div>
-        </div>
+        </div>,
+        document.body
       )}
-
+ 
       {/* ── STEP 2: Generating Loader (Sequential) ── */}
-      {step === "generating" && (
-        <div className="fixed inset-0 z-[120] bg-slate-950 flex flex-col items-center justify-center text-center p-8 space-y-12 animate-in fade-in duration-500 font-[Space_Grotesk]">
-           <div className="space-y-6">
-              <div className="relative w-48 h-48 mx-auto">
-                <svg className="w-full h-full transform -rotate-90">
-                  <circle cx="96" cy="96" r="88" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-900" />
-                  <circle cx="96" cy="96" r="88" stroke="currentColor" strokeWidth="8" fill="transparent" 
-                    className="text-purple-500 transition-all duration-1000 ease-out"
-                    strokeDasharray={2 * Math.PI * 88}
-                    strokeDashoffset={2 * Math.PI * 88 * (1 - (genStatus.current / genStatus.total || 0))} 
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center flex-col">
-                   <div className="text-4xl font-black text-white">{Math.round((genStatus.current / genStatus.total) * 100) || 0}%</div>
-                   <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-1">{genStatus.current} / {genStatus.total}</div>
-                </div>
+      {step === "generating" && createPortal(
+        <div className="fixed inset-0 z-[120] bg-slate-950 flex flex-col font-[Outfit] animate-in fade-in duration-500 h-screen w-screen overflow-hidden">
+           {/* Top Navigation & Status Bar */}
+           <div className="flex-none flex flex-col sm:flex-row items-center justify-between p-6 border-b border-slate-800/80 bg-slate-900/40 backdrop-blur-xl gap-4">
+              <div className="flex items-center gap-4">
+                 <div className="px-4 py-2 bg-purple-500/10 border border-purple-500/20 text-purple-400 rounded-full text-xs font-black uppercase tracking-widest leading-none flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                       <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+                    </span>
+                    <span>AI Presentation Studio</span>
+                 </div>
+                 <div className="text-slate-400 text-xs font-bold truncate max-w-[200px] sm:max-w-xs">
+                    Topic: <span className="text-slate-200">"{prompt}"</span>
+                 </div>
               </div>
+ 
+              {/* Progress Tracker Bar */}
+              <div className="flex items-center gap-6 w-full sm:w-auto">
+                 <div className="flex-1 sm:w-64 bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-800 relative shadow-inner">
+                    <motion.div 
+                       className="bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500 h-full rounded-full"
+                       initial={{ width: 0 }}
+                       animate={{ width: `${(genStatus.current / (genStatus.total || 1)) * 100}%` }}
+                       transition={{ duration: 0.5, ease: "easeOut" }}
+                    />
+                 </div>
+                 <div className="flex items-center gap-2 whitespace-nowrap">
+                    <span className="text-sm font-black text-white">
+                       {Math.round((genStatus.current / (genStatus.total || 1)) * 100) || 0}%
+                    </span>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                       ({genStatus.current} / {genStatus.total} slides)
+                    </span>
+                 </div>
+              </div>
+           </div>
+ 
+           {/* Live Generation Stage */}
+           <div className="flex-1 relative overflow-hidden flex flex-col items-center justify-center p-6 bg-slate-950/40">
+              {/* Dynamic scanline visual effect */}
+              <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(99,102,241,0.02)_1px,transparent_1px)] bg-[size:100%_8px] pointer-events-none" />
               
-              <div className="space-y-2">
-                <h2 className="text-4xl font-black text-white">AI Studio <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400">Crafting</span></h2>
-                <AnimatePresence mode="wait">
-                   <motion.p key={genStatus.msg} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="text-slate-400 font-bold h-6">
-                     {genStatus.msg}
-                   </motion.p>
-                </AnimatePresence>
+              <div className="max-w-4xl w-full flex flex-col items-center justify-center gap-4 relative z-10">
+                 {/* Live Status Subtitle */}
+                 <div className="flex items-center gap-3 bg-slate-900/60 border border-slate-800/80 px-5 py-2.5 rounded-2xl shadow-xl backdrop-blur-md mb-2">
+                    <div className="w-4 h-4 rounded-full border-2 border-slate-700 border-t-purple-500 animate-spin" />
+                    <AnimatePresence mode="wait">
+                       <motion.span 
+                          key={genStatus.msg} 
+                          initial={{ opacity: 0, y: 10 }} 
+                          animate={{ opacity: 1, y: 0 }} 
+                          exit={{ opacity: 0, y: -10 }} 
+                          className="text-slate-300 text-sm font-bold tracking-wide"
+                       >
+                          {genStatus.msg || "Initializing Layout..."}
+                       </motion.span>
+                    </AnimatePresence>
+                 </div>
+ 
+                 {/* Center Active Slide Canvas */}
+                 <div className="relative w-full aspect-[16/9] max-w-3xl rounded-[2rem] overflow-hidden border border-purple-500/20 shadow-[0_0_80px_rgba(168,85,247,0.1)] bg-slate-900 flex items-center justify-center">
+                    {/* Scanning animation line overlay */}
+                    <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-transparent via-purple-500/80 to-transparent shadow-[0_0_15px_rgba(168,85,247,0.5)] animate-scanline z-50 pointer-events-none" style={{
+                       animation: 'scan 4s linear infinite'
+                    }} />
+ 
+                    <style>{`
+                       @keyframes scan {
+                          0% { top: 0%; opacity: 0; }
+                          5% { opacity: 1; }
+                          95% { opacity: 1; }
+                          100% { top: 100%; opacity: 0; }
+                       }
+                    `}</style>
+ 
+                    <AnimatePresence mode="wait">
+                       {slides.length > 0 ? (
+                          <motion.div 
+                             key={slides.length}
+                             initial={{ opacity: 0, scale: 0.95 }}
+                             animate={{ opacity: 1, scale: 1 }}
+                             exit={{ opacity: 0, scale: 1.02 }}
+                             transition={{ duration: 0.4 }}
+                             className="w-full h-full"
+                          >
+                             <SlidePreview 
+                                slide={slides[slides.length - 1]}
+                                template={template}
+                                customColors={customColors}
+                                index={slides.length - 1}
+                                isActive={true}
+                             />
+                          </motion.div>
+                       ) : (
+                          /* Initial Skeleton Template Loading Card */
+                          <div className="w-full h-full flex flex-col items-center justify-center p-12 space-y-6 bg-slate-950/20">
+                             <div className="w-16 h-16 bg-purple-500/10 border border-purple-500/20 rounded-[1.5rem] flex items-center justify-center animate-pulse">
+                                <Sparkles className="w-8 h-8 text-purple-400" />
+                             </div>
+                             <div className="space-y-3 w-2/3 flex flex-col items-center">
+                                <div className="h-6 w-full bg-slate-800/80 rounded-full animate-pulse" />
+                                <div className="h-4 w-5/6 bg-slate-800/50 rounded-full animate-pulse" />
+                                <div className="h-4 w-4/6 bg-slate-800/30 rounded-full animate-pulse" />
+                             </div>
+                          </div>
+                       )}
+                    </AnimatePresence>
+                 </div>
               </div>
            </div>
-
-           <div className="w-full max-w-2xl">
-              {slides.length > 0 && (
-                <div className="flex gap-4 overflow-hidden py-4 justify-center">
-                  {slides.slice(-5).map((s, i) => (
-                    <div key={i} className="w-32 aspect-video flex-shrink-0 bg-slate-900 border border-purple-500/50 rounded-lg overflow-hidden animate-in slide-in-from-right-10 duration-500">
-                       <div className="h-1 w-full" style={{ background: `#${TEMPLATES[template].accent}` }} />
-                       <div className="p-2 text-[6px] font-bold text-slate-500 line-clamp-3">{s.title}</div>
-                    </div>
-                  ))}
-                  <div className="w-32 aspect-video flex-shrink-0 bg-slate-900/30 border border-slate-800 border-dashed rounded-lg flex items-center justify-center">
-                    <div className="w-4 h-4 border-2 border-slate-700 border-t-purple-500 rounded-full animate-spin" />
-                  </div>
-                </div>
-              )}
+ 
+           {/* Bottom Real-Time Horizontal Thumbnail Rail */}
+           <div className="flex-none bg-slate-900/60 border-t border-slate-800/80 p-6 backdrop-blur-xl">
+              <div className="max-w-6xl mx-auto flex flex-col gap-3">
+                 <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    Presentation Deck Outline ({slides.length} of {genStatus.total || slideCount} active)
+                 </div>
+                 
+                 <div className="flex items-center gap-4 overflow-x-auto py-2 px-1 custom-scrollbar scroll-smooth">
+                    {Array.from({ length: genStatus.total || slideCount }).map((_, idx) => {
+                       const isGenerated = idx < slides.length;
+                       const isGenerating = idx === slides.length;
+                       const isPending = idx > slides.length;
+ 
+                       return (
+                          <div 
+                             key={idx} 
+                             className={`relative w-40 aspect-[16/9] flex-shrink-0 rounded-xl overflow-hidden border transition-all duration-300 ${
+                                isGenerated 
+                                   ? "border-slate-800 hover:border-purple-500/40 bg-slate-950/40" 
+                                   : isGenerating 
+                                      ? "border-purple-500/80 ring-2 ring-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.2)] bg-slate-950/80" 
+                                      : "border-slate-800/40 border-dashed bg-slate-950/10"
+                             }`}
+                          >
+                             {isGenerated ? (
+                                <div className="w-full h-full flex flex-col relative group">
+                                   <div className="absolute top-0 left-0 w-full h-1" style={{ background: `#${(customColors || TEMPLATES[template] || TEMPLATES.corporate).accent}` }} />
+                                   <div className="flex-1 p-2.5 flex flex-col justify-between">
+                                      <div className="text-[8px] font-black text-slate-200 line-clamp-2 leading-tight">
+                                         {slides[idx]?.title || `Slide ${idx + 1}`}
+                                      </div>
+                                      <div className="flex justify-between items-center text-[7px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                                         <span>Type: {slides[idx]?.type || "content"}</span>
+                                         <span>#{idx + 1}</span>
+                                      </div>
+                                   </div>
+                                </div>
+                             ) : isGenerating ? (
+                                <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-slate-900/50 relative">
+                                   <div className="absolute top-0 left-0 w-full h-1 bg-purple-500 animate-pulse" />
+                                   <div className="w-5 h-5 border-2 border-slate-700 border-t-purple-500 rounded-full animate-spin mb-1.5" />
+                                   <div className="text-[8px] font-black text-purple-400 uppercase tracking-widest">
+                                      Crafting Slide
+                                   </div>
+                                   <div className="text-[7px] font-bold text-slate-500 mt-0.5">
+                                      #{idx + 1}
+                                   </div>
+                                </div>
+                             ) : (
+                                <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-slate-950/20">
+                                   <div className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">
+                                      Pending
+                                   </div>
+                                   <div className="text-[7px] font-bold text-slate-700 mt-1">
+                                      Slide #{idx + 1}
+                                   </div>
+                                </div>
+                             )}
+                          </div>
+                       );
+                    })}
+                 </div>
+              </div>
            </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── STEP 3: Preview & Export ── */}
