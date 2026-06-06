@@ -446,7 +446,7 @@ CRITICAL RULES:
    - "quote": One powerful quote.
    - "title": ONLY Slide 1 and optionally the final slide.
 4. FOLLOW USER STRUCTURE: If the prompt contains a list like "Slide 1, Slide 2...", you MUST follow that exact structure.
-5. NO EMPTY PAGES. Every user's PPT MUST be unique, highly accurate, and precisely follow their prompt.
+5. ADAPT TO PROMPT: The presentation structure MUST drastically adapt to the specific prompt. Data-heavy topics should use 'stats' and 'two-column' layouts. Narrative topics should use 'quote', 'timeline', and 'image' layouts. Do NOT stick to a generic Title -> Content -> Content layout. Make each generated PPT feel completely structurally unique depending on the topic.
 6. SIMPLE DEFINITIONS: For complex terms, always provide a "Simple Definition: [Definition]" bullet. Emulate GPT's clear, educational, and structured presentation style.
 7. NO FILLER: No "Key point here". Just the facts/meaning simply.
 8. imageKeyword: ${allowImages ? 'ONLY generate an image keyword if the user explicitly says "okay" to images or specifically requests one. Otherwise, leave it empty ("").' : 'DO NOT generate an image keyword. Keep imageKeyword empty ("") and do not use it.'}
@@ -481,8 +481,8 @@ ${learningContext}${structureContext}`;
             { role: "system", content: systemPrompt },
             ...userMessages,
         ],
-        max_tokens: 4096,
-        temperature: 0.55,
+        max_tokens: 3000,
+        temperature: 0.65,
         response_format: base64Image ? undefined : { type: "json_object" },
     });
 
@@ -532,7 +532,7 @@ STRICT RULES:
 5. First slide must be type "title". Last slide must be a conclusion.
 6. ${isAuto ? "Generate 7-10 slides for the topic depth." : `Generate EXACTLY ${slideCount} slides.`}
 7. Slides must be specific and relevant. No filler.
-8. Do NOT repeat same slide type consecutively.
+8. VARY FORMAT BY TOPIC: The slide types MUST drastically adapt to the specific prompt. Data-heavy topics should use 'stats' and 'two-column'. Narrative topics should use 'quote', 'timeline', and 'image'. Do NOT stick to a generic Title -> Content -> Content layout. Create a completely unique structural flow for each new topic.
 ${styleContext}${learningContext}${structureContext}`;
 
     let lastError = null;
@@ -733,7 +733,7 @@ ${styleContext}${learningContext}`;
                     { role: "user", content: `Generate the JSON for slide ${slideIndex + 1}: "${slideMeta.title}"` },
                 ],
                 response_format: { type: "json_object" },
-                max_tokens: 1500,
+                max_tokens: 1024,
                 temperature: 0.5 + (attempt * 0.1),
             });
 

@@ -1,8 +1,11 @@
 ## ✨ Core Features
 - **OCR Text Extraction**: Extract text from images using high-performance Groq AI.
 - **AI Presentation Studio**: Generate professional-grade PowerPoint presentations from a simple prompt or image.
-- **Manual Editor**: Fine-tune slides with a premium, drag-and-drop enabled visual editor.
 - **Advanced Auto-Learning AI**: The system "learns" from your manual edits to improve future generation quality, adapting to your personal style and terminology.
+- **Dynamic Prompt Variance**: Structural variety ensures generated presentations dynamically adjust their layouts based on prompt topics instead of repeatedly using standard templates.
+- **Strict Token Limits**: Optimized Groq AI API requests with safeguarded token limits.
+- **Immersive Studio Mode**: Enjoy full-screen live generation tracking and highly responsive slide previews across all devices, including mobile.
+- **Manual Editor**: Fine-tune slides with a premium, drag-and-drop enabled visual editor.
 - **Multi-Format Export**: Export results as PDF, DOCX, or PPTX.
 
 ## 📂 Project Structure

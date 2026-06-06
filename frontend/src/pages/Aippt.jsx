@@ -544,7 +544,7 @@ function FullPreviewModal({ slides, currentIndex, onUpdateSlide, onUpdateAllSlid
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -300, opacity: 0 }}
               transition={{ duration: 0.4, ease: "easeInOut" }}
-              className="relative w-[98vw] h-[90vh] shadow-[0_0_100px_rgba(0,0,0,0.8)] rounded-3xl overflow-hidden ring-1 ring-white/10 flex flex-col"
+              className="relative w-full max-w-[100vw] sm:max-w-[98vw] aspect-[16/9] max-h-[100vh] sm:max-h-[90vh] shadow-[0_0_100px_rgba(0,0,0,0.8)] sm:rounded-3xl overflow-hidden ring-1 ring-white/10 flex flex-col"
               style={{ background: fmtCol(tmpl.bg) }}
             >
               <div className="absolute top-0 left-0 w-full h-2 z-10" style={{ background: fmtCol(tmpl.accent) }} />
@@ -991,6 +991,23 @@ export default function Aippt() {
     window.addEventListener("beforeunload", saveState);
     return () => window.removeEventListener("beforeunload", saveState);
   }, [prompt, slides, template, fontStyle, slideCount, step, activeSlide, showFullPreview, lastSavedId, customColors]);
+
+  // Handle Fullscreen during generation
+  useEffect(() => {
+    if (step === "generating") {
+      try {
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        }
+      } catch (err) {}
+    } else if (step === "preview" && !showFullPreview) {
+      try {
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+      } catch (err) {}
+    }
+  }, [step, showFullPreview]);
 
   // ── Image upload ────────────────────────────────────────────────────────────
   const handleImageDrop = useCallback((e) => {
@@ -1702,7 +1719,7 @@ export default function Aippt() {
                  </div>
  
                  {/* Center Active Slide Canvas */}
-                 <div className="relative w-full aspect-[16/9] max-w-3xl rounded-[2rem] overflow-hidden border border-purple-500/20 shadow-[0_0_80px_rgba(168,85,247,0.1)] bg-slate-900 flex items-center justify-center">
+                 <div className="relative w-full aspect-[16/9] max-w-3xl rounded-xl sm:rounded-[2rem] overflow-hidden border border-purple-500/20 shadow-[0_0_80px_rgba(168,85,247,0.1)] bg-slate-900 flex items-center justify-center">
                     {/* Scanning animation line overlay */}
                     <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-transparent via-purple-500/80 to-transparent shadow-[0_0_15px_rgba(168,85,247,0.5)] animate-scanline z-50 pointer-events-none" style={{
                        animation: 'scan 4s linear infinite'
