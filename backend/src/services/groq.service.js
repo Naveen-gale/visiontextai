@@ -435,7 +435,7 @@ export const generatePPTContent = async (prompt, base64Image = null, mimeType = 
     const systemPrompt = `You are an expert presentation designer. Your ENTIRE output must be driven by the user's prompt — topic, tone, and structure.
 
 CRITICAL RULES:
-1. SLIDE VARIETY: Use a diverse mix of types. DO NOT repeat the same type consecutively. Types: ${allowImages ? '"title", "content", "image", "two-column", "quote", "timeline", "stats"' : '"title", "content", "two-column", "quote", "timeline", "stats"'}.
+1. SLIDE VARIETY: Use a mix of types that dynamically fit the structure. You MAY repeat types consecutively if the narrative demands it. Types: ${allowImages ? '"title", "content", "image", "two-column", "quote", "timeline", "stats"' : '"title", "content", "two-column", "quote", "timeline", "stats"'}.
 2. Slide 1 MUST be "title". ALL other slides (except possibly a concluding slide) MUST be content-heavy types: ${allowImages ? '"content", "two-column", "timeline", "stats", or "image"' : '"content", "two-column", "timeline", "stats"'}. NEVER use "title" type for middle slides.
 3. CONTENT per slide:
    - Mix longer, detailed explanations with short, punchy bullet points to ensure the user perfectly understands the PPT output. Make it high-level, perfect output like GPT.
@@ -532,7 +532,7 @@ STRICT RULES:
 5. First slide must be type "title". Last slide must be a conclusion.
 6. ${isAuto ? "Generate 7-10 slides for the topic depth." : `Generate EXACTLY ${slideCount} slides.`}
 7. Slides must be specific and relevant. No filler.
-8. VARY FORMAT BY TOPIC: The slide types MUST drastically adapt to the specific prompt. Data-heavy topics should use 'stats' and 'two-column'. Narrative topics should use 'quote', 'timeline', and 'image'. Do NOT stick to a generic Title -> Content -> Content layout. Create a completely unique structural flow for each new topic.
+8. VARY FORMAT BY TOPIC: The slide types MUST drastically adapt to the specific prompt. Data-heavy topics should heavily rely on 'stats' and 'two-column'. Narrative topics should heavily rely on 'quote', 'timeline', and 'image'. Let the structure dictate the slide types. You MAY repeat types consecutively. Create a completely unique structural flow and slide type sequence for each new topic.
 ${styleContext}${learningContext}${structureContext}`;
 
     let lastError = null;
@@ -627,7 +627,7 @@ export const predictStructureAi = async (prompt) => {
         const response = await callAiWithFallback({
             model: "llama-3.1-8b-instant",
             messages: [
-                { role: "system", content: "Predict the best narrative structure (e.g., Problem-Solution, Chronological, Persuasive Pitch, Educational) for a presentation about the user's topic. Return ONLY the structure name, no quotes, no extra text." },
+                { role: "system", content: "Predict the best narrative structure (e.g., 'Problem-Solution with Data Evidence', 'Chronological Journey', 'High-Impact Persuasive Pitch', 'Deep Educational Deep-Dive') for a presentation about the user's topic. Make it descriptive to guide slide types. Return ONLY the structure name, no quotes, no extra text." },
                 { role: "user", content: `Topic: ${prompt}` },
             ],
             max_tokens: 50,
