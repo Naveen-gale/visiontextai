@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import "./index.css";
 import Header from "./components/Header";
 import Toast from "./components/Toast";
@@ -8,12 +8,14 @@ import Extract from "./pages/Extract";
 import Aippt from "./pages/Aippt";
 import SharePpt from "./pages/SharePpt";
 import { useToast } from "./hooks/useToast";
+import Signup from "./components/Signup";
+import Login from "./components/login";
 
 export default function App() {
   const { toasts, addToast } = useToast();
 
   return (
-    <BrowserRouter>
+    <>
       <SmoothScroll />
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
         <Header />
@@ -24,6 +26,8 @@ export default function App() {
             <Route path="/extract" element={<Extract addToast={addToast} />} />
             <Route path="/aippt" element={<Aippt />} />
             <Route path="/share-ppt/:id" element={<SharePpt />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/login" element={<Login />} />
           </Routes>
         </main>
 
@@ -42,6 +46,6 @@ export default function App() {
 
         <Toast toasts={toasts} />
       </div>
-    </BrowserRouter>
+    </>
   );
 }

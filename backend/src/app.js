@@ -3,7 +3,7 @@ import cors from "cors";
 import converterRouter from "./routes/converter.route.js";
 import historyRouter from "./routes/history.routes.js";
 import extractHistoryRouter from "./routes/extractHistory.routes.js";
-
+import AuthRouter from "./routes/Authroute.js";
 const app = express();
 
 // Allow localhost and production Vercel frontend
@@ -42,6 +42,8 @@ app.get("/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+
+app.use("/api/v1/auth",AuthRouter)
 app.use("/api/v1", converterRouter);
 app.use("/api/v1/history", historyRouter);
 app.use("/api/v1/extract-history", extractHistoryRouter);

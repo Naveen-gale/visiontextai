@@ -19,6 +19,10 @@ const getHeaders = (isJson = true) => {
   const headers = {
     "x-session-id": getSessionId()
   };
+  const token = localStorage.getItem("token");
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
   if (isJson) headers["Content-Type"] = "application/json";
   return headers;
 };
@@ -337,4 +341,22 @@ export async function predictStructure(prompt) {
   });
   const data = await handleResponse(res, "Predict Structure");
   return data.structure;
+}
+
+export async function apiSignup({ name, email, password }) {
+  const res = await fetch(`${BASE}/auth/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, email, password }),
+  });
+  return await handleResponse(res, "Signup");
+}
+
+export async function apiLogin({ email, password }) {
+  const res = await fetch(`${BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  return await handleResponse(res, "Login");
 }
