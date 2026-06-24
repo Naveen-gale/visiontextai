@@ -429,6 +429,7 @@ const hasImageRequest = (text) => {
 
 export const generatePPTContent = async (prompt, base64Image = null, mimeType = "image/jpeg", slideCount = 8, sessionId = "anonymous", structure = null) => {
     const learningContext = await getLearnedContext(sessionId);
+    const structureContext = structure ? `\nPRESENTATION STRUCTURE / FLOW: The presentation must be designed strictly following the "${structure}" narrative structure flow. The sequence and layout types of the slides must fit this theme. Make sure to return ONLY a JSON object with a "slides" array containing the slides, and no other fields.\n` : "";
     const allowImages = hasImageRequest(prompt) || !!base64Image;
 
     const systemPrompt = `You are an expert Presentation Designer, Subject Matter Expert, and Educational Content Creator.
