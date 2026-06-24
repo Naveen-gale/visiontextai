@@ -445,10 +445,11 @@ CRITICAL RULES:
    - "timeline": Logical steps (Step 1, Step 2...).
    - "quote": One powerful quote.
    - "title": ONLY Slide 1 and optionally the final slide.
-4. FOLLOW USER STRUCTURE: If the prompt contains a list like "Slide 1, Slide 2...", you MUST follow that exact structure.
-5. ADAPT TO PROMPT: The presentation structure MUST drastically adapt to the specific prompt. Data-heavy topics should use 'stats' and 'two-column' layouts. Narrative topics should use 'quote', 'timeline', and 'image' layouts. Do NOT stick to a generic Title -> Content -> Content layout. Make each generated PPT feel completely structurally unique depending on the topic.
-6. SIMPLE DEFINITIONS: For complex terms, always provide a "Simple Definition: [Definition]" bullet. Emulate GPT's clear, educational, and structured presentation style.
-7. NO FILLER: No "Key point here". Just the facts/meaning simply.
+4. EXACT USER STRUCTURE: If the user provides an explicit slide-by-slide outline (e.g., "Slide 1: ... Slide 2: ..."), you MUST follow their exact text and structure. Pick the slide layout ("content", "two-column", etc.) that best matches their text, but DO NOT force unrelated layouts.
+5. NO EMPTY SLIDES: DO NOT generate any empty slides. EVERY single slide MUST be fully populated with detailed content.
+6. ADAPT TO PROMPT: If the user does NOT provide an exact structure, drastically adapt the slide types to the topic. Avoid repetitive sequences across different topics. Make each generated PPT structurally unique.
+7. SIMPLE DEFINITIONS: For complex terms, always provide a "Simple Definition: [Definition]" bullet. Emulate GPT's clear, educational, and highly structured presentation style.
+8. NO FILLER: No "Key point here". Just the facts/meaning simply.
 8. imageKeyword: ${allowImages ? 'ONLY generate an image keyword if the user explicitly says "okay" to images or specifically requests one. Otherwise, leave it empty ("").' : 'DO NOT generate an image keyword. Keep imageKeyword empty ("") and do not use it.'}
 9. NO SELF-BRANDING: NEVER use the words "VisionText AI" or any software names.
 10. RETURN FORMAT: Respond with JSON: { "slides": [ ... ] }
@@ -531,8 +532,9 @@ STRICT RULES:
 4. Valid types: ${allowImages ? '"title", "content", "image", "two-column", "quote", "timeline", "stats"' : '"title", "content", "two-column", "quote", "timeline", "stats"'}
 5. First slide must be type "title". Last slide must be a conclusion.
 6. ${isAuto ? "Generate 7-10 slides for the topic depth." : `Generate EXACTLY ${slideCount} slides.`}
-7. Slides must be specific and relevant. No filler.
-8. VARY FORMAT BY TOPIC: The slide types MUST drastically adapt to the specific prompt. Data-heavy topics should heavily rely on 'stats' and 'two-column'. Narrative topics should heavily rely on 'quote', 'timeline', and 'image'. Let the structure dictate the slide types. You MAY repeat types consecutively. Create a completely unique structural flow and slide type sequence for each new topic.
+7. EXACT USER STRUCTURE: If the user provides a specific slide-by-slide outline, use EXACTLY their outline and text. Do not invent your own structure if they provided one.
+8. VARY FORMAT BY TOPIC: If no exact outline is provided, adapt slide types dynamically to the prompt. Avoid repetitive sequences.
+9. NO EMPTY SLIDES: Every slide must be specific and strictly relevant. No filler. No empty place holder slides.
 ${styleContext}${learningContext}${structureContext}`;
 
     let lastError = null;
@@ -717,9 +719,9 @@ ${example}
 STRICT RULES:
 1. Return ONLY valid JSON. No markdown. No explanations.
 2. Fill the JSON with highly accurate, educational, and specific content.
-3. NEVER leave arrays empty (bullets, timelineItems, stats). Provide 3-5 items.
+3. NEVER leave arrays empty (bullets, timelineItems, stats). Provide 3-5 items. NO EMPTY SLIDES ALLOWED.
 4. "imageKeyword" is optional.
-5. Emulate ChatGPT's clear and structured output.
+5. Emulate ChatGPT's clear, deep, and structured output.
 ${styleContext}${learningContext}`;
 
     let lastError = null;

@@ -28,11 +28,10 @@ model = None
 model_load_attempted = False
 model_load_error = None
 
-# Structure model
-STRUCTURE_MODEL_PATH = os.environ.get("STRUCTURE_MODEL_PATH") or os.path.join(BASE_DIR, "topics_structures.pkl")
+# Structure model (Deprecated - Now using Groq)
 structure_model = None
-structure_model_load_attempted = False
-structure_model_load_error = None
+structure_model_load_attempted = True
+structure_model_load_error = "Deprecated API"
 
 def get_model():
     global model, model_load_attempted, model_load_error
@@ -48,18 +47,7 @@ def get_model():
     return model
 
 def get_structure_model():
-    global structure_model, structure_model_load_attempted, structure_model_load_error
-    if not structure_model_load_attempted:
-        structure_model_load_attempted = True
-        try:
-            print(f"Attempting to load structure model from {STRUCTURE_MODEL_PATH}")
-            structure_model = joblib.load(STRUCTURE_MODEL_PATH)
-            print(f"Structure model loaded successfully from {STRUCTURE_MODEL_PATH}")
-        except Exception as e:
-            structure_model_load_error = str(e)
-            print(f"Warning: Failed to load structure model from {STRUCTURE_MODEL_PATH}. Error: {e}")
-    return structure_model
-
+    return None
 @app.route('/predict-theme', methods=['POST'])
 def predict_theme():
     m = get_model()
@@ -86,25 +74,11 @@ def predict_theme():
 
 @app.route('/predict-structure', methods=['POST'])
 def predict_structure():
-    m = get_structure_model()
-    if m is None:
-        return jsonify({"error": f"Structure model not loaded properly. Path: {STRUCTURE_MODEL_PATH}, Error: {structure_model_load_error}"}), 500
-
-    data = request.get_json()
-    if not data or 'prompt' not in data:
-        return jsonify({"error": "No prompt provided"}), 400
-
-    prompt = data['prompt']
-    
-    try:
-        prediction = m.predict([prompt])
-        structure_name = str(prediction[0])
-        return jsonify({
-            "success": True,
-            "structure": structure_name
-        })
-    except Exception as e:
-        return jsonify({"error": f"Structure prediction failed: {str(e)}"}), 500
+    # Deprecated API, structure is now handled by Groq
+    return jsonify({
+        "success": True,
+        "structure": "Standard"
+    })
 
 @app.route('/health', methods=['GET'])
 def health():
