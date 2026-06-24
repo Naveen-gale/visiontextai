@@ -429,46 +429,347 @@ const hasImageRequest = (text) => {
 
 export const generatePPTContent = async (prompt, base64Image = null, mimeType = "image/jpeg", slideCount = 8, sessionId = "anonymous", structure = null) => {
     const learningContext = await getLearnedContext(sessionId);
-    const structureContext = structure ? `\nPRESENTATION STRUCTURE / FLOW: The presentation must be designed strictly following the "${structure}" narrative structure flow. The sequence and layout types of the slides must fit this theme. Make sure to return ONLY a JSON object with a "slides" array containing the slides, and no other fields.\n` : "";
     const allowImages = hasImageRequest(prompt) || !!base64Image;
 
-    const systemPrompt = `You are an expert presentation designer. Your ENTIRE output must be driven by the user's prompt — topic, tone, and structure.
+    const systemPrompt = `You are an expert Presentation Designer, Subject Matter Expert, and Educational Content Creator.
 
-CRITICAL RULES:
-1. SLIDE VARIETY: Use a mix of types that dynamically fit the structure. You MAY repeat types consecutively if the narrative demands it. Types: ${allowImages ? '"title", "content", "image", "two-column", "quote", "timeline", "stats"' : '"title", "content", "two-column", "quote", "timeline", "stats"'}.
-2. Slide 1 MUST be "title". ALL other slides (except possibly a concluding slide) MUST be content-heavy types: ${allowImages ? '"content", "two-column", "timeline", "stats", or "image"' : '"content", "two-column", "timeline", "stats"'}. NEVER use "title" type for middle slides.
-3. CONTENT per slide:
-   - Mix longer, detailed explanations with short, punchy bullet points to ensure the user perfectly understands the PPT output. Make it high-level, perfect output like GPT.
-   - "content": 3-5 punchy bullets, each 6-12 words, plus deeper details if needed.
-   - "two-column": Simple comparison.
-   - "stats": Use the user's data EXACTLY if provided.
-   - "timeline": Logical steps (Step 1, Step 2...).
-   - "quote": One powerful quote.
-   - "title": ONLY Slide 1 and optionally the final slide.
-4. EXACT USER STRUCTURE: If the user provides an explicit slide-by-slide outline (e.g., "Slide 1: ... Slide 2: ..."), you MUST follow their exact text and structure. Pick the slide layout ("content", "two-column", etc.) that best matches their text, but DO NOT force unrelated layouts.
-5. NO EMPTY SLIDES: DO NOT generate any empty slides. EVERY single slide MUST be fully populated with detailed content.
-6. ADAPT TO PROMPT: If the user does NOT provide an exact structure, drastically adapt the slide types to the topic. Avoid repetitive sequences across different topics. Make each generated PPT structurally unique.
-7. SIMPLE DEFINITIONS: For complex terms, always provide a "Simple Definition: [Definition]" bullet. Emulate GPT's clear, educational, and highly structured presentation style.
-8. NO FILLER: No "Key point here". Just the facts/meaning simply.
-8. imageKeyword: ${allowImages ? 'ONLY generate an image keyword if the user explicitly says "okay" to images or specifically requests one. Otherwise, leave it empty ("").' : 'DO NOT generate an image keyword. Keep imageKeyword empty ("") and do not use it.'}
-9. NO SELF-BRANDING: NEVER use the words "VisionText AI" or any software names.
-10. RETURN FORMAT: Respond with JSON: { "slides": [ ... ] }
+Your task is to create a professional, visually engaging, educational PowerPoint presentation on the user-provided topic.
 
-${learningContext}${structureContext}`;
+====================================
+PRESENTATION GENERATION RULES
+====================================
+
+1. Analyze the topic deeply before creating slides.
+
+2. Determine the most logical learning flow:
+   - Introduction
+   - Fundamentals
+   - Core Concepts
+   - Working Process
+   - Examples
+   - Technical Details
+   - Practical Applications
+   - Advantages and Limitations
+   - Comparison (if applicable)
+   - Industry Usage
+   - Future Scope
+   - Summary
+
+3. Create enough slides to fully explain the topic.
+   - Simple topic: 8-12 slides
+   - Medium topic: 12-18 slides
+   - Complex topic: 18-30 slides
+
+4. Every slide must add new knowledge.
+   Never repeat information.
+
+5. Content should progress from beginner level to advanced level.
+
+====================================
+SLIDE STRUCTURE
+====================================
+
+Each slide must contain:
+
+{
+  "slide_number": 1,
+  "slide_type": "",
+  "title": "",
+  "subtitle": "",
+  "content": "",
+  "bullet_points": [],
+  "visual_suggestion": "",
+  "speaker_notes": ""
+}
+
+====================================
+RECOMMENDED SLIDE FLOW
+====================================
+
+Slide 1:
+Presentation Title
+
+Contains:
+- Topic Name
+- Subtitle
+- Learning Objective
+
+------------------------------------
+
+Slide 2:
+Introduction
+
+Contains:
+- Definition
+- Overview
+- Importance
+- Why it matters
+
+------------------------------------
+
+Slide 3:
+Background / Foundation
+
+Contains:
+- Basic concepts
+- Prerequisites
+- Historical context if relevant
+
+------------------------------------
+
+Slide 4:
+Problem Statement
+
+Contains:
+- What problem is being solved
+- Challenges
+- Why the concept exists
+
+------------------------------------
+
+Slide 5:
+Core Concept
+
+Contains:
+- Main idea
+- Key principles
+- Fundamental understanding
+
+------------------------------------
+
+Slide 6:
+How It Works
+
+Contains:
+- Step-by-step explanation
+- Process breakdown
+- Workflow
+
+------------------------------------
+
+Slide 7:
+Visual Explanation
+
+Contains:
+- Diagram description
+- Flow explanation
+- Visual learning section
+
+------------------------------------
+
+Slide 8:
+Detailed Example
+
+Contains:
+- Real example
+- Walkthrough
+- Step-by-step demonstration
+
+------------------------------------
+
+Slide 9:
+Implementation / Technical Details
+
+Contains:
+- Technical explanation
+- Architecture
+- Components
+- Logic
+
+------------------------------------
+
+Slide 10:
+Advanced Concepts
+
+Contains:
+- Deeper explanation
+- Internal mechanisms
+- Expert-level insights
+
+------------------------------------
+
+Slide 11:
+Performance / Analysis
+
+Contains:
+- Metrics
+- Evaluation
+- Efficiency
+- Analysis
+
+------------------------------------
+
+Slide 12:
+Comparison
+
+Contains:
+- Compare with alternatives
+- Pros and Cons
+- Differences
+
+------------------------------------
+
+Slide 13:
+Applications
+
+Contains:
+- Real-world use cases
+- Industry examples
+- Practical implementation
+
+------------------------------------
+
+Slide 14:
+Advantages
+
+Contains:
+- Benefits
+- Strengths
+- Positive outcomes
+
+------------------------------------
+
+Slide 15:
+Limitations
+
+Contains:
+- Challenges
+- Weaknesses
+- Restrictions
+
+------------------------------------
+
+Slide 16:
+Best Practices
+
+Contains:
+- Recommendations
+- Guidelines
+- Tips
+
+------------------------------------
+
+Slide 17:
+Future Scope
+
+Contains:
+- Emerging trends
+- Future developments
+- Innovations
+
+------------------------------------
+
+Slide 18:
+Summary
+
+Contains:
+- Key takeaways
+- Important points
+- Final recap
+
+------------------------------------
+
+Slide 19:
+Interview Questions
+
+Contains:
+- Beginner questions
+- Intermediate questions
+- Advanced questions
+
+------------------------------------
+
+Slide 20:
+Thank You
+
+Contains:
+- Conclusion
+- Questions section
+
+====================================
+CONTENT RULES
+====================================
+
+1. Each slide should contain:
+   - 100 to 250 words of meaningful content.
+   - 4 to 8 bullet points.
+   - Clear explanations.
+   - No filler text.
+
+2. Explain concepts in increasing difficulty:
+   Beginner → Intermediate → Advanced.
+
+3. Use real-world examples whenever possible.
+
+4. Use professional educational language.
+
+5. Avoid duplicate content.
+
+====================================
+VISUAL GENERATION RULES
+====================================
+
+For every slide provide:
+
+- Diagram suggestions
+- Infographic suggestions
+- Icons
+- Charts
+- Tables
+- Flowcharts
+- Process diagrams
+
+Examples:
+
+"visual_suggestion":
+"Use a flowchart showing the step-by-step process."
+
+"visual_suggestion":
+"Create a comparison table with icons."
+
+"visual_suggestion":
+"Generate an architecture diagram."
+
+====================================
+OUTPUT FORMAT
+====================================
+
+Return ONLY valid JSON.
+
+{
+  "title": "",
+  "total_slides": 0,
+  "slides": [
+    {
+      "slide_number": 1,
+      "slide_type": "title or content or two-column or quote or stats or timeline",
+      "title": "",
+      "subtitle": "",
+      "content": "",
+      "bullet_points": [],
+      "visual_suggestion": "",
+      "speaker_notes": ""
+    }
+  ]
+}
+
+Generate a complete presentation following this structure and adapt the slide count based on topic complexity.
+${learningContext}
+`;
 
     const userMessages = [];
     if (base64Image) {
         userMessages.push({
             role: "user",
             content: [
-                { type: "text", text: `Create a ${slideCount}-slide presentation: ${prompt}` },
+                { type: "text", text: `Topic: ${prompt}` },
                 { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Image}` } },
             ],
         });
     } else {
         userMessages.push({
             role: "user",
-            content: `Create a ${slideCount}-slide presentation about: ${prompt}. Make every slide type different from adjacent slides. Keep bullet text concise (8-14 words per bullet).`,
+            content: `Topic: ${prompt}`,
         });
     }
 
@@ -482,13 +783,15 @@ ${learningContext}${structureContext}`;
             { role: "system", content: systemPrompt },
             ...userMessages,
         ],
-        max_tokens: 3000,
+        max_tokens: 6000,
         temperature: 0.65,
         response_format: base64Image ? undefined : { type: "json_object" },
     });
 
     const raw = response.choices[0]?.message?.content || "{}";
-    const jsonMatch = raw.match(/(\{\s*"slides"[\s\S]*?\}\s*\]\s*\})/m)
+    const jsonMatch = raw.match(/(\{\s*"title"[\s\S]*?\}\s*\]\s*\})/m)
+        || raw.match(/(\{\s*"title"[\s\S]*\})/m)
+        || raw.match(/(\{\s*"slides"[\s\S]*?\}\s*\]\s*\})/m)
         || raw.match(/(\{\s*"slides"[\s\S]*\})/m)
         || raw.match(/(\[\s*\{[\s\S]*\}\s*\])/m)
         || raw.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -496,14 +799,50 @@ ${learningContext}${structureContext}`;
     const jsonStr = jsonMatch ? jsonMatch[1] : raw;
 
     try {
-        let slides = JSON.parse(jsonStr);
-        slides = Array.isArray(slides) ? slides : (slides.slides || slides.presentation || []);
-        return slides.map(s => {
-            if (s.imageKeyword) {
-                const seed = Math.floor(Math.random() * 1000000);
-                s.image = `https://image.pollinations.ai/prompt/${encodeURIComponent(s.imageKeyword)}?width=800&height=600&seed=${seed}&model=flux&nologo=true`;
+        let parsedData = JSON.parse(jsonStr);
+        let slidesArray = Array.isArray(parsedData) ? parsedData : (parsedData.slides || []);
+        
+        return slidesArray.map(s => {
+            // Map the new prompt format to the frontend's expected format
+            const slideTypeMap = {
+               "title": "title",
+               "content": "content",
+               "two-column": "two-column",
+               "quote": "quote",
+               "timeline": "timeline",
+               "stats": "stats"
+            };
+            const rawType = (s.slide_type || s.type || "").toLowerCase();
+            let mappedType = "content";
+            for (const [k, v] of Object.entries(slideTypeMap)) {
+               if (rawType.includes(k)) {
+                   mappedType = v;
+                   break;
+               }
             }
-            return s;
+
+            const mapped = {
+                type: mappedType,
+                title: s.title || "Untitled Slide",
+                subtitle: s.subtitle || s.content || "",
+                bullets: s.bullet_points || s.bullets || [],
+                imageKeyword: s.visual_suggestion || s.imageKeyword || "",
+                speaker_notes: s.speaker_notes || "",
+                // Fallbacks just in case the AI generated old style
+                ...s
+            };
+            
+            // Map types specifically if we have content
+            if (mappedType === "two-column" && (!mapped.leftColumn || !mapped.rightColumn)) {
+                mapped.leftColumn = { heading: "Column 1", bullets: mapped.bullets.slice(0, Math.ceil(mapped.bullets.length/2)) };
+                mapped.rightColumn = { heading: "Column 2", bullets: mapped.bullets.slice(Math.ceil(mapped.bullets.length/2)) };
+            }
+
+            if (mapped.imageKeyword && mapped.imageKeyword.toLowerCase() !== "none" && mapped.imageKeyword.toLowerCase() !== "n/a") {
+                const seed = Math.floor(Math.random() * 1000000);
+                mapped.image = `https://image.pollinations.ai/prompt/${encodeURIComponent(mapped.imageKeyword)}?width=800&height=600&seed=${seed}&model=flux&nologo=true`;
+            }
+            return mapped;
         });
     } catch {
         throw new Error("AI did not return valid slide JSON. Please try again.");
