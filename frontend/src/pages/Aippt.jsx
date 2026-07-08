@@ -388,14 +388,37 @@ function FullPreviewModal({ slides, currentIndex, onUpdateSlide, onUpdateAllSlid
   };
 
   const editImage = () => {
-    const defaultUrl = slide.image || ("https://loremflickr.com/800/600/" + encodeURIComponent(slide.title || "presentation"));
-    const url = window.prompt("Enter an image URL, or leave blank to remove the image. Default is a random placeholder:", defaultUrl);
-    if (url !== null) {
-      if (url.trim() === "") {
-        onUpdateSlide(currentIndex, { ...slide, image: null });
-      } else {
-        onUpdateSlide(currentIndex, { ...slide, image: url.trim() });
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/*";
+    fileInput.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const { uploadImageFile } = await import("../utils/api");
+        const url = await uploadImageFile(file);
+        if (url) {
+           onUpdateSlide(currentIndex, { ...slide, image: url });
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Upload error.");
       }
+    };
+
+    const defaultUrl = slide.image || ("https://loremflickr.com/800/600/" + encodeURIComponent(slide.title || "presentation"));
+    const action = window.prompt(
+      "Enter an image URL, type 'pc' to upload from your computer, or leave blank to remove the image. Default is a random placeholder:", 
+      defaultUrl
+    );
+
+    if (action === null) return;
+    if (action.trim().toLowerCase() === "pc") {
+      fileInput.click();
+    } else if (action.trim() === "") {
+      onUpdateSlide(currentIndex, { ...slide, image: null });
+    } else {
+      onUpdateSlide(currentIndex, { ...slide, image: action.trim() });
     }
   };
 
@@ -1104,10 +1127,26 @@ export default function Aippt() {
       const generatedSlides = [];
       const totalSteps = outline.length;
 
+      let contextImageUrl = null;
+      if (image) {
+         setGenStatus({ current: 0, total: slideCount, msg: "Uploading context image..." });
+         try {
+            const { uploadImageFile } = await import("../utils/api");
+            contextImageUrl = await uploadImageFile(image);
+         } catch (e) {
+            console.warn("Failed to upload context image", e);
+         }
+      }
+
       for (let i = 0; i < totalSteps; i++) {
         setGenStatus({ current: i + 1, total: totalSteps, msg: `Crafting slide ${i+1}: ${outline[i].title}...` });
         
         const slide = await generatePptSlide(prompt, outline, i, currentStyleGuide);
+        
+        if (i === 0 && contextImageUrl) {
+            slide.image = contextImageUrl;
+        }
+
         generatedSlides.push(slide);
         setSlides([...generatedSlides]); // Update UI live
 

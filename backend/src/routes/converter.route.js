@@ -56,6 +56,17 @@ const pptFileUpload = multer({
     limits: { fileSize: 50 * 1024 * 1024 },
 }).single("file");
 
+const genericImageUpload = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => cb(null, uploadsDir),
+        filename: (req, file, cb) => {
+            const ext = path.extname(file.originalname);
+            cb(null, `img-${Date.now()}${ext}`);
+        },
+    }),
+    limits: { fileSize: 20 * 1024 * 1024 },
+}).single("image");
+
 const pptReferenceUpload = multer({
     storage: multer.diskStorage({
         destination: (req, file, cb) => cb(null, uploadsDir),
@@ -91,6 +102,9 @@ router.post("/ai/edit-slide", editSingleSlide);
 
 // Upload generated PPT to ImageKit for sharing
 router.post("/upload-ppt", pptFileUpload, uploadPPT);
+
+// Upload generic image to ImageKit
+router.post("/upload-image", genericImageUpload, uploadPPT); // we can reuse uploadPPT since it just takes req.file and uploads to ImageKit
 
 // AI Text Improvement
 router.post("/ai/improve-text", improveSlideText);

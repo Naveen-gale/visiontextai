@@ -179,6 +179,14 @@ export async function uploadPptFile(blob, fileName = "presentation.pptx") {
   return data.url;
 }
 
+export async function uploadImageFile(file) {
+  const fd = new FormData();
+  fd.append("image", file);
+  const res = await fetch(`${BASE}/upload-image`, { method: "POST", body: fd });
+  const data = await handleResponse(res, "Image Upload");
+  return data.url;
+}
+
 /**
  * Call AI Text Improvement
  */
