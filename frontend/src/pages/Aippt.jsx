@@ -387,7 +387,7 @@ function FullPreviewModal({ slides, currentIndex, onUpdateSlide, onUpdateAllSlid
     onUpdateSlide(currentIndex, { ...slide, [field]: arr });
   };
 
-  const editImage = () => {
+  const handleUploadImage = () => {
     const fileInput = document.createElement("input");
     fileInput.type = "file";
     fileInput.accept = "image/*";
@@ -405,21 +405,23 @@ function FullPreviewModal({ slides, currentIndex, onUpdateSlide, onUpdateAllSlid
         alert("Upload error.");
       }
     };
+    fileInput.click();
+  };
 
+  const handleImageUrl = () => {
     const defaultUrl = slide.image || ("https://loremflickr.com/800/600/" + encodeURIComponent(slide.title || "presentation"));
-    const action = window.prompt(
-      "Enter an image URL, type 'pc' to upload from your computer, or leave blank to remove the image. Default is a random placeholder:", 
-      defaultUrl
-    );
-
+    const action = window.prompt("Enter an image URL:", defaultUrl);
+    
     if (action === null) return;
-    if (action.trim().toLowerCase() === "pc") {
-      fileInput.click();
-    } else if (action.trim() === "") {
+    if (action.trim() === "") {
       onUpdateSlide(currentIndex, { ...slide, image: null });
     } else {
       onUpdateSlide(currentIndex, { ...slide, image: action.trim() });
     }
+  };
+
+  const handleRemoveImage = () => {
+    onUpdateSlide(currentIndex, { ...slide, image: null });
   };
 
   const removeImage = (idx) => {
@@ -653,9 +655,17 @@ function FullPreviewModal({ slides, currentIndex, onUpdateSlide, onUpdateAllSlid
                 <div className="flex gap-2">
                   <button onClick={addExtraText} title="Add own text/copy-paste" className="text-[10px] bg-slate-800 text-slate-400 px-3 py-1 rounded-full border border-slate-700 hover:text-white transition-all">+ Add Text</button>
                   <button onClick={() => addItem("stats", { value: "0", label: "New Stat" })} className="text-[10px] bg-slate-800 text-slate-400 px-3 py-1 rounded-full border border-slate-700 hover:text-white transition-all">+</button>
-                  <button onClick={editImage} className="text-[10px] bg-slate-800 text-slate-400 px-3 py-1 rounded-full border border-slate-700 hover:text-white transition-all">
-                    {slide.image ? "🖼️ Change/Remove Image" : "🖼️ Add Image"}
+                  <button onClick={handleUploadImage} className="text-[10px] bg-slate-800 text-slate-400 px-3 py-1 rounded-full border border-slate-700 hover:text-white transition-all">
+                    🖼️ Upload Image
                   </button>
+                  <button onClick={handleImageUrl} className="text-[10px] bg-slate-800 text-slate-400 px-3 py-1 rounded-full border border-slate-700 hover:text-white transition-all">
+                    🌐 Image URL
+                  </button>
+                  {slide.image && (
+                    <button onClick={handleRemoveImage} className="text-[10px] bg-slate-800 text-red-400 px-3 py-1 rounded-full border border-slate-700 hover:text-white transition-all">
+                      🗑️ Remove Image
+                    </button>
+                  )}
                 </div>
               </EditableText>
               <div className="grid grid-cols-2 gap-6 flex-grow content-start">
@@ -774,9 +784,17 @@ function FullPreviewModal({ slides, currentIndex, onUpdateSlide, onUpdateAllSlid
               >
                 <div className="flex gap-2">
                   <button onClick={() => addItem("bullets", "New point")} className="text-[10px] bg-slate-800 text-slate-400 px-3 py-1 rounded-full border border-slate-700 hover:text-white transition-all">+</button>
-                  <button onClick={editImage} className="text-[10px] bg-slate-800 text-slate-400 px-3 py-1 rounded-full border border-slate-700 hover:text-white transition-all">
-                    {slide.image ? "🖼️ Change/Remove Image" : "🖼️ Add Image"}
+                  <button onClick={handleUploadImage} className="text-[10px] bg-slate-800 text-slate-400 px-3 py-1 rounded-full border border-slate-700 hover:text-white transition-all">
+                    🖼️ Upload Image
                   </button>
+                  <button onClick={handleImageUrl} className="text-[10px] bg-slate-800 text-slate-400 px-3 py-1 rounded-full border border-slate-700 hover:text-white transition-all">
+                    🌐 Image URL
+                  </button>
+                  {slide.image && (
+                    <button onClick={handleRemoveImage} className="text-[10px] bg-slate-800 text-red-400 px-3 py-1 rounded-full border border-slate-700 hover:text-white transition-all">
+                      🗑️ Remove Image
+                    </button>
+                  )}
                 </div>
               </EditableText>
               <div className="flex gap-8 flex-1 w-full">
@@ -1017,13 +1035,7 @@ export default function Aippt() {
 
   // Handle Fullscreen during generation
   useEffect(() => {
-    if (step === "generating") {
-      try {
-        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-          document.documentElement.requestFullscreen().catch(() => {});
-        }
-      } catch (err) {}
-    } else if (step === "preview" && !showFullPreview) {
+    if (step === "preview" && !showFullPreview) {
       try {
         if (document.fullscreenElement && document.exitFullscreen) {
           document.exitFullscreen().catch(() => {});
