@@ -1,4 +1,4 @@
-import { extractTextFromImage, summarizeText, translateText, fixGrammar, extractKeyInfo, generatePPTContent, generatePPTOutline, generateSingleSlideContent, generateNewInsertedSlide, editSingleSlideContent, editPPTContent, askQuestion, simplifyConcept, generateKnowledgeGraph, suggestionEngine, predictThemeAi, predictStructureAi } from "../services/groq.service.js";
+import { extractTextFromImage, summarizeText, translateText, fixGrammar, extractKeyInfo, generatePPTContent, generatePPTOutline, generateSingleSlideContent, generateNewInsertedSlide, editSingleSlideContent, editPPTContent, askQuestion, simplifyConcept, generateKnowledgeGraph, suggestionEngine } from "../services/groq.service.js";
 import { uploadToImageKit } from "../services/imagekit.service.js";
 import { extractDocumentText, formatDocumentTextWithAI } from "../services/document.service.js";
 import { analyzePPTX } from "../services/pptAnalysis.service.js";
@@ -494,8 +494,33 @@ export const predictTheme = async (req, res) => {
     }
     
     try {
-        const theme = await predictThemeAi(prompt);
-        return res.status(200).json({ success: true, theme });
+        const flaskUrl = process.env.FLASK_API_URL || "http://127.0.0.1:5001";
+        const response = await fetch(`${flaskUrl}/predict-theme`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt })
+        });
+        
+        if (!response.ok) {
+             throw new Error(`Flask API returned ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        const themeMap = {
+            "Abstract Glass": "future",
+            "Cyber Future": "cyber",
+            "Eco Nature": "nature",
+            "Executive Blue": "corporate",
+            "Midnight Neon": "dark",
+            "Modern Sleek": "modern",
+            "Neon Nights": "neon_glow",
+            "Royal Gold": "premium_dark"
+        };
+        
+        const themeKey = themeMap[data.theme] || "modern";
+
+        return res.status(200).json({ success: true, theme: themeKey, ml_theme: data.theme });
     } catch (error) {
         console.error("Theme prediction error:", error);
         return res.status(500).json({ success: false, error: error.message });
@@ -513,8 +538,20 @@ export const predictStructure = async (req, res) => {
     }
     
     try {
-        const structure = await predictStructureAi(prompt);
-        return res.status(200).json({ success: true, structure });
+        const flaskUrl = process.env.FLASK_API_URL || "http://127.0.0.1:5001";
+        const response = await fetch(`${flaskUrl}/predict-structure`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt })
+        });
+        
+        if (!response.ok) {
+             throw new Error(`Flask API returned ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        return res.status(200).json({ success: true, structure: data.structure });
     } catch (error) {
         console.error("Structure prediction error:", error);
         return res.status(500).json({ success: false, error: error.message });

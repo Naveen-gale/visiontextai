@@ -399,6 +399,27 @@ function SlideEditor({ slide, tmpl, onSave, onClose, onAiImprove, aiImproving })
   // Use elements if they exist, otherwise compile the slide's template layout into drag-and-drop elements
   const [elements, setElements] = useState(() => slide.elements?.length ? slide.elements : compileSlideToElements(slide, tmpl));
   const [selectedId, setSelectedId] = useState(null);
+  const [scale, setScale] = useState(1);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        // Leave 32px padding on sides (16px * 2)
+        const availableWidth = entry.contentRect.width - 32;
+        const availableHeight = entry.contentRect.height - 32;
+        
+        const scaleX = availableWidth / 1066;
+        const scaleY = availableHeight / 600;
+        
+        // Take the smallest scale to maintain aspect ratio without clipping
+        setScale(Math.min(1, scaleX, scaleY));
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const updateElement = (id, updates) => setElements(p => p.map(e => e.id === id ? { ...e, ...updates } : e));
 
@@ -407,11 +428,11 @@ function SlideEditor({ slide, tmpl, onSave, onClose, onAiImprove, aiImproving })
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[99999] flex flex-col bg-slate-950 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[99999] flex flex-col bg-slate-950 backdrop-blur-sm overflow-hidden">
       {/* Header / Toolbar */}
-      <div className="flex items-center justify-between px-6 h-16 border-b border-slate-800 bg-slate-900 shrink-0">
-        <div className="flex items-center gap-4">
-          <h3 className="text-lg font-black text-white">🎨 Canvas Editor</h3>
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 md:px-6 md:h-16 border-b border-slate-800 bg-slate-900 shrink-0 gap-4 overflow-x-auto">
+        <div className="flex items-center gap-2 md:gap-4 flex-wrap">
+          <h3 className="text-base md:text-lg font-black text-white shrink-0">🎨 Canvas Editor</h3>
           {selectedId && elements.find(e => e.id === selectedId)?.type === "text" && (
             <div className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg ml-4">
               <span className="text-xs font-bold text-slate-400 mr-2 uppercase tracking-widest">Font</span>
@@ -445,16 +466,16 @@ function SlideEditor({ slide, tmpl, onSave, onClose, onAiImprove, aiImproving })
             + Add Text Box
           </button>
         </div>
-        <div className="flex gap-2">
-          <button onClick={onClose} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition-colors">Cancel</button>
-          <button onClick={handleSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl transition-colors shadow-lg shadow-indigo-500/20">💾 Save Canvas</button>
+        <div className="flex gap-2 shrink-0 self-end md:self-auto">
+          <button onClick={onClose} className="px-3 md:px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition-colors text-sm md:text-base">Cancel</button>
+          <button onClick={handleSave} className="px-3 md:px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl transition-colors shadow-lg shadow-indigo-500/20 text-sm md:text-base">💾 Save Canvas</button>
         </div>
       </div>
 
       {/* Editor Canvas Area */}
-      <div className="flex-1 overflow-auto bg-slate-950 flex items-center justify-center p-8" onClick={() => setSelectedId(null)}>
-        {/* We use 1066x600 for a 16:9 canvas to edit on */}
-        <div className="relative shadow-2xl ring-1 ring-slate-700 overflow-hidden" style={{ width: 1066, height: 600, background: `#${tmpl.bg}`, fontFamily:"'Segoe UI',Calibri,Arial,sans-serif" }}>
+      <div ref={containerRef} className="flex-1 overflow-auto bg-slate-950 flex items-center justify-center p-4 md:p-8" onClick={() => setSelectedId(null)}>
+        {/* We use 1066x600 for a 16:9 canvas to edit on, scaled dynamically */}
+        <div className="relative shadow-2xl ring-1 ring-slate-700 overflow-hidden shrink-0" style={{ width: 1066, height: 600, background: `#${tmpl.bg}`, fontFamily:"'Segoe UI',Calibri,Arial,sans-serif", transform: `scale(${scale})` }}>
           {elements.map(el => {
             const color = el.color ? (el.color.startsWith("#") ? el.color : `#${el.color}`) : "#000";
             

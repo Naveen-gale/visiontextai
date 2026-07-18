@@ -1078,6 +1078,8 @@ export default function Aippt() {
   const [isPredictingTheme, setIsPredictingTheme] = useState(false);
   const [suggestedThemeName, setSuggestedThemeName] = useState(null);
   const [suggestedThemeKey, setSuggestedThemeKey] = useState(null);
+  const [suggestedStructure, setSuggestedStructure] = useState(null);
+  const [structure, setStructure] = useState(null);
 
   // Result state
   const [slides, setSlides] = useState(savedState.slides || []);
@@ -1165,20 +1167,15 @@ export default function Aippt() {
     setError("");
     setIsPredictingTheme(true);
     try {
-      const themeName = await predictTheme(prompt); // e.g. "Eco Nature"
+      // predictTheme returns the mapped key, e.g., "nature"
+      const themeKey = await predictTheme(prompt); 
+      const structureName = await predictStructure(prompt).catch(() => "Standard");
       
-      // Find matching key in TEMPLATES
-      let matchedKey = null;
-      for (const [key, tmpl] of Object.entries(TEMPLATES)) {
-        if (tmpl.name.toLowerCase() === themeName.toLowerCase()) {
-          matchedKey = key;
-          break;
-        }
-      }
-      
-      if (matchedKey) {
-        setSuggestedThemeName(themeName);
-        setSuggestedThemeKey(matchedKey);
+      if (themeKey || structureName) {
+        const tmpl = TEMPLATES[themeKey] || TEMPLATES.modern;
+        setSuggestedThemeName(tmpl.name);
+        setSuggestedThemeKey(themeKey);
+        setSuggestedStructure(structureName);
         setStep("theme_suggestion");
       } else {
         // Fallback if not found
@@ -1194,7 +1191,7 @@ export default function Aippt() {
   };
 
   // ── Generate PPT Sequential ───────────────────────────────────────────────
-  const handleGenerate = async () => {
+  const handleGenerate = async (overrideStructure = null) => {
     const token = localStorage.getItem("token");
     if (!token) {
       alert("Please log in to your account before generating a presentation.");
@@ -1218,23 +1215,23 @@ export default function Aippt() {
         const analysis = await analyzeReferencePpt(referenceFile);
         currentStyleGuide = analysis.style;
         setStyleGuide(currentStyleGuide);
-        
-        // If it was an import, maybe we want to use the slides? 
-        // For now, only style extraction is used for 'Generate'.
       }
 
       // Predict Structure
       setGenStatus({ current: 0, total: slideCount, msg: "Predicting optimal structure..." });
-      let predictedStructure = null;
-      try {
-        predictedStructure = await predictStructure(prompt);
-      } catch (err) {
-        console.warn("Structure prediction failed:", err);
+      let finalStructure = overrideStructure || structure;
+      if (!finalStructure) {
+        try {
+          finalStructure = await predictStructure(prompt);
+        } catch (err) {
+          console.warn("Structure prediction failed:", err);
+          finalStructure = "Standard";
+        }
       }
 
       // 2. Generate Outline
       setGenStatus({ current: 0, total: slideCount, msg: "Architecting presentation outline..." });
-      const outline = await generatePptOutline(prompt, slideCount, currentStyleGuide, predictedStructure);
+      const outline = await generatePptOutline(prompt, slideCount, currentStyleGuide, finalStructure);
       
       if (!outline?.length) throw new Error("AI failed to create an outline. Please try again.");
 
@@ -1760,16 +1757,17 @@ export default function Aippt() {
             <div className="w-20 h-20 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
               <Sparkles className="w-10 h-10 text-purple-400" />
             </div>
-            <h2 className="text-3xl font-black text-white mb-2">Theme Suggested!</h2>
+            <h2 className="text-3xl font-black text-white mb-2">AI Suggestion</h2>
             <p className="text-slate-400 mb-8">
-              Based on your prompt, our AI recommends the <strong className="text-purple-400">{suggestedThemeName}</strong> theme for this presentation.
+              Based on your prompt, our ML model recommends the <strong className="text-purple-400">{suggestedThemeName}</strong> theme and a <strong className="text-indigo-400">{suggestedStructure}</strong> layout for optimal engagement.
             </p>
             <div className="flex flex-col gap-4 relative z-10">
               <button
                 className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-lg rounded-2xl shadow-xl hover:scale-[1.02] transition-all"
                 onClick={() => {
                   setTemplate(suggestedThemeKey);
-                  handleGenerate();
+                  setStructure(suggestedStructure);
+                  handleGenerate(suggestedStructure);
                 }}
               >
                 Accept & Generate
@@ -2062,7 +2060,7 @@ export default function Aippt() {
 
           {/* Slide Grid with inter-slide buttons */}
           <div className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-6 bg-slate-900/50 border border-slate-800 rounded-3xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-6 bg-slate-900/50 border border-slate-800 rounded-3xl">
               {slides.map((slide, i) => (
                 <motion.div 
                   key={i} 
