@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { History as HistoryIcon, Rocket, Sparkles, Presentation } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { generatePptData, uploadPptFile, savePptHistory, generatePptOutline, generatePptSlide, analyzeReferencePpt, generateInsertedSlideData, saveAiCorrection, predictTheme, predictStructure } from "../utils/api";
-import { generatePptx, TEMPLATES, FONT_STYLES } from "../utils/pptGenerator";
+import { generatePptx, validateSlides, TEMPLATES, FONT_STYLES } from "../utils/pptGenerator";
 import EditableText from "../components/EditableText";
 import HistoryModal from "../components/modals/HistoryModal";
 
@@ -27,6 +27,11 @@ function SlidePreview({ slide, template, index, isActive, onClick }) {
   const fmtCol = (c) => c ? (c.startsWith("#") ? c : `#${c}`) : "#000000";
 
   const renderContent = () => {
+    const accent = `#${tmpl.accent}`;
+    const titleColor = `#${tmpl.highlight || tmpl.title}`;
+    const bodyColor = `#${tmpl.body}`;
+    const bg = `#${tmpl.bg}`;
+
     if (slide.type === "title") {
       return (
         <div className="flex flex-col items-center justify-center h-full p-4 text-center">
@@ -35,24 +40,50 @@ function SlidePreview({ slide, template, index, isActive, onClick }) {
         </div>
       );
     }
-    if (slide.type === "quote") {
+    if (slide.type === "section") {
+      return (
+        <div className="flex flex-col items-center justify-center h-full p-4 text-center relative overflow-hidden">
+          <div className="absolute inset-x-0 top-1/4 bottom-1/4 opacity-10" style={{ background: accent }} />
+          {slide.sectionNumber && <div className="text-4xl font-black opacity-20 mb-1" style={{ color: accent }}>{slide.sectionNumber}</div>}
+          <div className="text-lg sm:text-xl font-black" style={{ color: `#${tmpl.title}` }}>{slide.title}</div>
+          {slide.subtitle && <div className="text-[10px] sm:text-xs font-bold mt-2 opacity-60" style={{ color: `#${tmpl.sub}` }}>{slide.subtitle}</div>}
+        </div>
+      );
+    }
+    if (slide.type === "agenda") {
+      const items = slide.agendaItems || slide.bullets || [];
+      return (
+        <div className="flex flex-col h-full p-4">
+          <div className="text-sm font-black mb-3 border-b pb-1" style={{ color: titleColor, borderColor: accent + "44" }}>{slide.title}</div>
+          <div className="flex flex-col gap-1.5 flex-1">
+            {items.slice(0, 6).map((item, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black flex-shrink-0" style={{ background: accent, color: bg }}>{i + 1}</div>
+                <span className="text-[9px] sm:text-[10px] font-medium" style={{ color: bodyColor }}>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    if (slide.type === "quote" || slide.type === "callout") {
       return (
         <div className="flex flex-col justify-center h-full p-6">
-          <div className="text-4xl font-serif leading-none mb-2" style={{ color: `#${tmpl.accent}` }}>"</div>
+          <div className="text-4xl font-serif leading-none mb-2" style={{ color: accent }}>"</div>
           <div className="text-sm sm:text-base font-bold italic mb-4" style={{ color: `#${tmpl.title}` }}>{slide.quote || slide.title}</div>
           {slide.author && <div className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-right" style={{ color: `#${tmpl.sub}` }}>— {slide.author}</div>}
         </div>
       );
     }
-    if (slide.type === "stats") {
+    if (slide.type === "stats" || slide.type === "chart") {
       return (
         <div className="flex flex-col h-full p-4">
-          <div className="text-sm sm:text-base font-black mb-4 border-b pb-2" style={{ color: `#${tmpl.highlight}`, borderColor: `#${tmpl.accent}33` }}>{slide.title}</div>
+          <div className="text-sm sm:text-base font-black mb-4 border-b pb-2" style={{ color: titleColor, borderColor: accent + "33" }}>{slide.title}</div>
           <div className="grid grid-cols-2 gap-2 flex-grow content-start">
             {(slide.stats || []).slice(0, 4).map((s, i) => (
-              <div key={i} className="flex flex-col p-2 rounded-lg border bg-white/5" style={{ borderColor: `#${tmpl.accent}55` }}>
-                <div className="text-lg sm:text-xl font-black" style={{ color: `#${tmpl.accent}` }}>{s.value}</div>
-                <div className="text-[8px] sm:text-[10px] font-bold opacity-80 uppercase tracking-widest mt-1" style={{ color: `#${tmpl.text}` }}>{s.label}</div>
+              <div key={i} className="flex flex-col p-2 rounded-lg border bg-white/5" style={{ borderColor: accent + "55" }}>
+                <div className="text-lg sm:text-xl font-black" style={{ color: accent }}>{s.value}</div>
+                <div className="text-[8px] sm:text-[10px] font-bold opacity-80 uppercase tracking-widest mt-1" style={{ color: bodyColor }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -62,22 +93,22 @@ function SlidePreview({ slide, template, index, isActive, onClick }) {
     if (slide.type === "two-column") {
       return (
         <div className="flex flex-col h-full p-4">
-          <div className="text-sm sm:text-base font-black mb-4 border-b pb-2" style={{ color: `#${tmpl.highlight}`, borderColor: `#${tmpl.accent}33` }}>{slide.title}</div>
+          <div className="text-sm sm:text-base font-black mb-4 border-b pb-2" style={{ color: titleColor, borderColor: accent + "33" }}>{slide.title}</div>
           <div className="flex flex-1 gap-4">
             <div className="flex-1 flex flex-col gap-2">
-              <div className="text-[10px] sm:text-xs font-black uppercase tracking-widest mb-1" style={{ color: `#${tmpl.accent}` }}>{slide.leftColumn?.heading}</div>
+              <div className="text-[10px] sm:text-xs font-black uppercase tracking-widest mb-1" style={{ color: accent }}>{slide.leftColumn?.heading}</div>
               {(slide.leftColumn?.bullets || []).slice(0, 3).map((b, i) => (
-                <div key={i} className="text-[8px] sm:text-[10px] font-medium leading-relaxed flex gap-2" style={{ color: `#${tmpl.text}` }}>
-                  <span style={{ color: `#${tmpl.accent}` }}>•</span> <span>{b}</span>
+                <div key={i} className="text-[8px] sm:text-[10px] font-medium leading-relaxed flex gap-2" style={{ color: bodyColor }}>
+                  <span style={{ color: accent }}>•</span> <span>{b}</span>
                 </div>
               ))}
             </div>
-            <div className="w-px h-full" style={{ background: `#${tmpl.accent}44` }} />
+            <div className="w-px h-full" style={{ background: accent + "44" }} />
             <div className="flex-1 flex flex-col gap-2">
-              <div className="text-[10px] sm:text-xs font-black uppercase tracking-widest mb-1" style={{ color: `#${tmpl.accent}` }}>{slide.rightColumn?.heading}</div>
+              <div className="text-[10px] sm:text-xs font-black uppercase tracking-widest mb-1" style={{ color: accent }}>{slide.rightColumn?.heading}</div>
               {(slide.rightColumn?.bullets || []).slice(0, 3).map((b, i) => (
-                <div key={i} className="text-[8px] sm:text-[10px] font-medium leading-relaxed flex gap-2" style={{ color: `#${tmpl.text}` }}>
-                  <span style={{ color: `#${tmpl.accent}` }}>•</span> <span>{b}</span>
+                <div key={i} className="text-[8px] sm:text-[10px] font-medium leading-relaxed flex gap-2" style={{ color: bodyColor }}>
+                  <span style={{ color: accent }}>•</span> <span>{b}</span>
                 </div>
               ))}
             </div>
@@ -85,18 +116,84 @@ function SlidePreview({ slide, template, index, isActive, onClick }) {
         </div>
       );
     }
+    if (slide.type === "comparison" || slide.type === "table") {
+      const headers = slide.tableHeaders || ["Feature", "A", "B"];
+      const rows = (slide.tableData || []).slice(0, 4);
+      return (
+        <div className="flex flex-col h-full p-4">
+          <div className="text-sm font-black mb-2 border-b pb-1" style={{ color: titleColor, borderColor: accent + "33" }}>{slide.title}</div>
+          <div className="flex-1 overflow-hidden">
+            <div className="flex gap-1 mb-1">
+              {headers.slice(0, 3).map((h, i) => <div key={i} className="flex-1 text-[8px] font-black uppercase rounded px-1 py-0.5" style={{ background: accent, color: bg }}>{h}</div>)}
+            </div>
+            {rows.map((row, ri) => (
+              <div key={ri} className="flex gap-1 mb-0.5">
+                {(Array.isArray(row) ? row : [row]).slice(0, 3).map((cell, ci) => (
+                  <div key={ci} className="flex-1 text-[8px] font-medium px-1 py-0.5 rounded" style={{ background: ri % 2 === 0 ? accent + "15" : "transparent", color: bodyColor }}>{cell}</div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    if (slide.type === "swot") {
+      const q = slide.swotItems || {};
+      const quads = [{l:"S", items: q.strengths||[], c:"16a34a"},{l:"W", items:q.weaknesses||[], c:"dc2626"},{l:"O", items:q.opportunities||[], c:"2563eb"},{l:"T", items:q.threats||[], c:"d97706"}];
+      return (
+        <div className="flex flex-col h-full p-4">
+          <div className="text-sm font-black mb-2 border-b pb-1" style={{ color: titleColor, borderColor: accent + "33" }}>{slide.title}</div>
+          <div className="grid grid-cols-2 gap-1.5 flex-1">
+            {quads.map((quad, qi) => (
+              <div key={qi} className="rounded p-1.5 border" style={{ borderColor: `#${quad.c}`, background: `#${quad.c}15` }}>
+                <div className="text-[9px] font-black uppercase mb-1" style={{ color: `#${quad.c}` }}>{quad.l}</div>
+                {quad.items.slice(0, 2).map((item, ii) => <div key={ii} className="text-[7px] font-medium" style={{ color: bodyColor }}>• {item}</div>)}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    if (slide.type === "process") {
+      const steps = (slide.processSteps || slide.bullets || []).slice(0, 5);
+      return (
+        <div className="flex flex-col h-full p-4">
+          <div className="text-sm font-black mb-3 border-b pb-1" style={{ color: titleColor, borderColor: accent + "33" }}>{slide.title}</div>
+          <div className="flex items-center justify-around flex-1">
+            {steps.map((step, si) => (
+              <div key={si} className="flex items-center gap-1">
+                <div className="flex flex-col items-center gap-1">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-black" style={{ background: accent, color: bg }}>{si + 1}</div>
+                  <div className="text-[7px] font-medium text-center max-w-[40px]" style={{ color: bodyColor }}>{String(step).slice(0, 15)}</div>
+                </div>
+                {si < steps.length - 1 && <div className="text-[8px] font-black" style={{ color: accent }}>›</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    if (slide.type === "thank-you") {
+      return (
+        <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+          <div className="text-xl sm:text-2xl font-black mb-3" style={{ color: `#${tmpl.title}` }}>{slide.title || "Thank You"}</div>
+          <div className="w-12 h-0.5 mb-3" style={{ background: accent }} />
+          {slide.subtitle && <div className="text-[10px] sm:text-xs font-bold opacity-70" style={{ color: `#${tmpl.sub}` }}>{slide.subtitle}</div>}
+        </div>
+      );
+    }
     if (slide.type === "timeline") {
       return (
         <div className="flex flex-col h-full p-4">
-          <div className="text-sm sm:text-base font-black mb-4 border-b pb-2" style={{ color: `#${tmpl.highlight}`, borderColor: `#${tmpl.accent}33` }}>{slide.title}</div>
+          <div className="text-sm sm:text-base font-black mb-4 border-b pb-2" style={{ color: titleColor, borderColor: accent + "33" }}>{slide.title}</div>
           <div className="flex flex-col gap-3 flex-grow justify-center relative pl-2">
-            <div className="absolute left-3 top-0 bottom-0 w-px" style={{ background: `#${tmpl.accent}44` }} />
+            <div className="absolute left-3 top-0 bottom-0 w-px" style={{ background: accent + "44" }} />
             {(slide.timelineItems || []).slice(0, 5).map((t, i) => (
               <div key={i} className="flex gap-4 relative z-10">
-                <div className="w-2.5 h-2.5 rounded-full mt-1 flex-shrink-0" style={{ background: `#${tmpl.accent}` }} />
+                <div className="w-2.5 h-2.5 rounded-full mt-1 flex-shrink-0" style={{ background: accent }} />
                 <div className="flex flex-col pb-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: `#${tmpl.accent}` }}>{t.year}</span>
-                  <span className="text-[8px] sm:text-[10px] font-medium mt-0.5" style={{ color: `#${tmpl.text}` }}>{t.event}</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: accent }}>{t.year}</span>
+                  <span className="text-[8px] sm:text-[10px] font-medium mt-0.5" style={{ color: bodyColor }}>{t.event}</span>
                 </div>
               </div>
             ))}
@@ -107,12 +204,12 @@ function SlidePreview({ slide, template, index, isActive, onClick }) {
     // Default: content with bullets
     return (
       <div className="flex flex-col h-full p-4">
-        <div className="text-sm sm:text-base font-black mb-4 border-b pb-2" style={{ color: `#${tmpl.highlight}`, borderColor: `#${tmpl.accent}33` }}>{slide.title}</div>
+        <div className="text-sm sm:text-base font-black mb-4 border-b pb-2" style={{ color: titleColor, borderColor: accent + "33" }}>{slide.title}</div>
         <div className="flex gap-4 flex-1">
           <ul className="flex-1 flex flex-col gap-2">
             {(slide.bullets || []).slice(0, 5).map((b, i) => (
-              <li key={i} className="text-[8px] sm:text-[10px] font-medium leading-relaxed flex gap-2" style={{ color: `#${tmpl.text}` }}>
-                 <span style={{ color: `#${tmpl.accent}` }}>•</span> <span>{b}</span>
+              <li key={i} className="text-[8px] sm:text-[10px] font-medium leading-relaxed flex gap-2" style={{ color: bodyColor }}>
+                 <span style={{ color: accent }}>•</span> <span>{b}</span>
               </li>
             ))}
             {!slide.bullets?.length && slide.subtitle && (
@@ -125,8 +222,6 @@ function SlidePreview({ slide, template, index, isActive, onClick }) {
             </div>
           )}
         </div>
-        
-        {/* Extra Text (Full Control) */}
         {slide.extraText?.length > 0 && (
           <div className="mt-2 flex flex-col gap-1">
             {slide.extraText.map((txt, i) => (
@@ -496,7 +591,7 @@ function FullPreviewModal({ slides, currentIndex, onUpdateSlide, onUpdateAllSlid
                value={slide.type}
                onChange={(e) => onUpdateSlide(currentIndex, { ...slide, type: e.target.value })}
              >
-               {["title", "content", "image", "two-column", "quote", "timeline", "stats"].map(t => (
+               {["title","section","agenda","content","two-column","image","image-full","quote","callout","timeline","stats","comparison","swot","process","table","chart","thank-you"].map(t => (
                  <option key={t} value={t}>{t.toUpperCase()}</option>
                ))}
              </select>
@@ -1100,6 +1195,13 @@ export default function Aippt() {
 
   // ── Generate PPT Sequential ───────────────────────────────────────────────
   const handleGenerate = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Please log in to your account before generating a presentation.");
+      navigate("/login");
+      return;
+    }
+
     if (!prompt.trim()) { setError("Please enter a topic or description."); return; }
     setError("");
     setStep("generating");
@@ -1220,6 +1322,19 @@ export default function Aippt() {
     pptBlobRef.current = null;
   };
 
+  const handleDuplicateSlide = (index) => {
+    const cloned = JSON.parse(JSON.stringify(slides[index]));
+    cloned.title = (cloned.title || "Slide") + " (Copy)";
+    const newSlides = [...slides];
+    newSlides.splice(index + 1, 0, cloned);
+    setSlides(newSlides);
+    pptBlobRef.current = null;
+  };
+
+  const handlePdfExport = () => {
+    window.print();
+  };
+
   const handleRefineEntirePpt = async () => {
     if (!refinePrompt.trim()) return;
     setShowRefineModal(false);
@@ -1295,6 +1410,13 @@ export default function Aippt() {
     const requestedName = window.prompt("Enter a filename for your presentation:", defaultPrefix);
     if (requestedName === null) return;
     const finalName = requestedName.trim() || defaultPrefix;
+
+    // Pre-export validation
+    const warnings = validateSlides(slides);
+    if (warnings.length > 0) {
+      const proceed = window.confirm(`⚠️ Quality Check:\n\n${warnings.slice(0, 5).join("\n")}\n\nContinue downloading anyway?`);
+      if (!proceed) return;
+    }
 
     setDownloading(true);
     setError("");
@@ -1959,10 +2081,12 @@ export default function Aippt() {
                     onClick={() => { setActiveSlide(i); setShowFullPreview(true); }}
                   />
                   
-                  {/* Reorder controls directly on grid */}
+                  {/* Reorder + Duplicate controls */}
                   <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleMoveSlide(i, i - 1)} className="p-1 px-2 bg-slate-800 rounded-md text-[10px] text-slate-400 hover:text-white" disabled={i === 0}>←</button>
-                    <button onClick={() => handleMoveSlide(i, i + 1)} className="p-1 px-2 bg-slate-800 rounded-md text-[10px] text-slate-400 hover:text-white" disabled={i === slides.length - 1}>→</button>
+                    <button onClick={() => handleMoveSlide(i, i - 1)} className="p-1 px-2 bg-slate-800 rounded-md text-[10px] text-slate-400 hover:text-white" disabled={i === 0} title="Move left">←</button>
+                    <button onClick={() => handleDuplicateSlide(i)} className="p-1 px-2 bg-indigo-800/50 rounded-md text-[10px] text-indigo-400 hover:text-white" title="Duplicate slide">⧉</button>
+                    <button onClick={() => handleDeleteSlide(i)} className="p-1 px-2 bg-red-900/30 rounded-md text-[10px] text-red-400 hover:text-white" title="Delete slide">✕</button>
+                    <button onClick={() => handleMoveSlide(i, i + 1)} className="p-1 px-2 bg-slate-800 rounded-md text-[10px] text-slate-400 hover:text-white" disabled={i === slides.length - 1} title="Move right">→</button>
                   </div>
 
                   {/* Add button between items */}
@@ -2004,7 +2128,7 @@ export default function Aippt() {
 
             {error && <div className="mb-6 p-4 w-full bg-red-500/10 border border-red-500/30 text-red-500 text-sm font-bold rounded-xl flex items-center justify-center gap-2">⚠️ {error}</div>}
 
-            <div className="grid sm:grid-cols-2 gap-4 w-full">
+            <div className="grid sm:grid-cols-3 gap-4 w-full">
               <button
                 className="flex items-center justify-center gap-2 py-4 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-slate-700 text-white font-black text-lg rounded-2xl shadow-xl shadow-purple-500/20 hover:shadow-purple-500/40 border border-purple-500  transition-all active:scale-[0.98] relative overflow-hidden"
                 onClick={handleDownload}
@@ -2019,6 +2143,15 @@ export default function Aippt() {
               </button>
 
               <button
+                className="flex items-center justify-center gap-2 py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-black text-lg rounded-2xl border border-slate-700 transition-all active:scale-[0.98]"
+                onClick={handlePdfExport}
+                id="export-pdf-btn"
+                title="Export as PDF using browser print dialog"
+              >
+                🖨️ Export PDF
+              </button>
+
+              <button
                 className="flex items-center justify-center gap-2 py-4 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-indigo-400 hover:text-indigo-300 disabled:text-slate-500 font-black text-lg rounded-2xl border-2 border-indigo-500/30 hover:border-indigo-500/60 disabled:border-slate-800 transition-all active:scale-[0.98]"
                 onClick={handleShare}
                 disabled={sharing || !!shareUrl}
@@ -2029,7 +2162,7 @@ export default function Aippt() {
                 ) : shareUrl ? (
                   <>✅ Link Ready!</>
                 ) : (
-                  <>🔗 Get Shareable Link</>
+                  <>🔗 Share Link</>
                 )}
               </button>
             </div>

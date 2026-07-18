@@ -1,494 +1,252 @@
 import pptxgen from "pptxgenjs";
+import { compileSlideToElements } from "./templateCompiler";
 
-// ─── Template Definitions ────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONSTANTS & HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
 export const TEMPLATES = {
+  // ── Original 16 ──────────────────────────────────────────────────────────────
+  corporate: {
+    name: "Corporate Blue", emoji: "🏢",
+    bg: "f8fafc", accent: "3b82f6", title: "0f172a", body: "334155", sub: "64748b", highlight: "2563eb",
+  },
   modern: {
-    name: "Modern Sleek",
-    emoji: "📱",
-    bg: "0f172a",
-    accent: "38bdf8",
-    title: "f8fafc",
-    body: "94a3b8",
-    sub: "64748b",
-    highlight: "0ea5e9",
-  },
-  gradient: {
-    name: "Vibrant Gradient", 
-    emoji: "🌈",
-    bg: "1e1b4b",
-    accent: "f43f5e",
-    title: "ffffff",
-    body: "e2e8f0",
-    sub: "fb7185",
-    highlight: "fb7185",
-  },
-  minimal: {
-    name: "Minimalist Light",
-    emoji: "⚪",
-    bg: "f8fafc",
-    accent: "0f172a",
-    title: "0f172a",
-    body: "475569",
-    sub: "94a3b8",
-    highlight: "0f172a",
+    name: "Modern Minimal", emoji: "✨",
+    bg: "ffffff", accent: "10b981", title: "18181b", body: "3f3f46", sub: "71717a", highlight: "059669",
   },
   dark: {
-    name: "Midnight Neon",
-    emoji: "🌃",
-    bg: "020617",
-    accent: "22c55e",
-    title: "ffffff",
-    body: "94a3b8",
-    sub: "4ade80",
-    highlight: "22c55e",
+    name: "Dark Tech", emoji: "🌙",
+    bg: "0f172a", accent: "8b5cf6", title: "f8fafc", body: "cbd5e1", sub: "94a3b8", highlight: "a78bfa",
   },
-  corporate: {
-    name: "Executive Blue",
-    emoji: "💼",
-    bg: "1e293b",
-    accent: "2563eb",
-    title: "ffffff",
-    body: "cbd5e1",
-    sub: "94a3b8",
-    highlight: "3b82f6",
+  creative: {
+    name: "Creative Studio", emoji: "🎨",
+    bg: "fff1f2", accent: "f43f5e", title: "4c0519", body: "881337", sub: "9f1239", highlight: "e11d48",
   },
-  cyberpunk: {
-    name: "Cyber Future",
-    emoji: "🤖",
-    bg: "09090b",
-    accent: "d946ef",
-    title: "ffffff",
-    body: "a1a1aa",
-    sub: "e879f9",
-    highlight: "f0abfc",
+  elegant: {
+    name: "Elegant Serif", emoji: "🖋️",
+    bg: "fdfbf7", accent: "b45309", title: "451a03", body: "78350f", sub: "92400e", highlight: "d97706",
   },
-  eco: {
-    name: "Eco Nature",
-    emoji: "🌿",
-    bg: "064e3b",
-    accent: "a3e635",
-    title: "f7fee7",
-    body: "d1fae5",
-    sub: "bef264",
-    highlight: "bef264",
+  nature: {
+    name: "Organic Green", emoji: "🌿",
+    bg: "f0fdf4", accent: "22c55e", title: "064e3b", body: "0f766e", sub: "115e59", highlight: "16a34a",
   },
-  luxury: {
-    name: "Royal Gold",
-    emoji: "👑",
-    bg: "1c1917",
-    accent: "eab308",
-    title: "ffffff",
-    body: "d6d3d1",
-    sub: "facc15",
-    highlight: "fde047",
+  cyber: {
+    name: "Cyberpunk", emoji: "🤖",
+    bg: "000000", accent: "06b6d4", title: "f0fdfa", body: "a5f3fc", sub: "67e8f9", highlight: "22d3ee",
   },
-  playful: {
-    name: "Candy Pop",
-    emoji: "🍭",
-    bg: "fdf2f8",
-    accent: "ec4899",
-    title: "831843",
-    body: "be185d",
-    sub: "f472b6",
-    highlight: "db2777",
+  sunset: {
+    name: "Warm Sunset", emoji: "🌅",
+    bg: "fff7ed", accent: "ea580c", title: "7c2d12", body: "9a3412", sub: "c2410c", highlight: "f97316",
+  },
+  ocean: {
+    name: "Deep Ocean", emoji: "🌊",
+    bg: "ecfeff", accent: "0891b2", title: "164e63", body: "155e75", sub: "0e7490", highlight: "06b6d4",
+  },
+  startup: {
+    name: "Startup Pink", emoji: "🚀",
+    bg: "fdf2f8", accent: "ec4899", title: "831843", body: "be185d", sub: "f472b6", highlight: "db2777",
   },
   academic: {
-    name: "Scholar Paper",
-    emoji: "📜",
-    bg: "f5f5f4",
-    accent: "57534e",
-    title: "1c1917",
-    body: "44403c",
-    sub: "78716c",
-    highlight: "292524",
+    name: "Scholar Paper", emoji: "📜",
+    bg: "f5f5f4", accent: "57534e", title: "1c1917", body: "44403c", sub: "78716c", highlight: "292524",
   },
   future: {
-    name: "Abstract Glass",
-    emoji: "💎",
-    bg: "172554",
-    accent: "6366f1",
-    title: "ffffff",
-    body: "bfdbfe",
-    sub: "818cf8",
-    highlight: "a5b4fc",
+    name: "Abstract Glass", emoji: "💎",
+    bg: "172554", accent: "6366f1", title: "ffffff", body: "bfdbfe", sub: "818cf8", highlight: "a5b4fc",
   },
   bold: {
-    name: "High Impact",
-    emoji: "💥",
-    bg: "000000",
-    accent: "ef4444",
-    title: "ffffff",
-    body: "d1d5db",
-    sub: "f87171",
-    highlight: "fca5a5",
+    name: "High Impact", emoji: "💥",
+    bg: "000000", accent: "ef4444", title: "ffffff", body: "d1d5db", sub: "f87171", highlight: "fca5a5",
   },
   premium_dark: {
-    name: "Luxury Obsidian",
-    emoji: "🖤",
-    bg: "0a0a0a",
-    accent: "fbbf24",
-    title: "ffffff",
-    body: "d4d4d8",
-    sub: "9ca3af",
-    highlight: "fcd34d",
+    name: "Luxury Obsidian", emoji: "🖤",
+    bg: "0a0a0a", accent: "fbbf24", title: "ffffff", body: "d4d4d8", sub: "9ca3af", highlight: "fcd34d",
   },
   neon_glow: {
-    name: "Neon Nights",
-    emoji: "🟣",
-    bg: "0f0c29",
-    accent: "00f2fe",
-    title: "ffffff",
-    body: "e0e7ff",
-    sub: "a5b4fc",
-    highlight: "4facfe",
+    name: "Neon Nights", emoji: "🟣",
+    bg: "0f0c29", accent: "00f2fe", title: "ffffff", body: "e0e7ff", sub: "a5b4fc", highlight: "4facfe",
   },
   glassmorphism: {
-    name: "Glassmorphism Blur",
-    emoji: "🧊",
-    bg: "cbd5e1",
-    accent: "3b82f6",
-    title: "1e293b",
-    body: "334155",
-    sub: "475569",
-    highlight: "2563eb",
+    name: "Glassmorphism Blur", emoji: "🧊",
+    bg: "cbd5e1", accent: "3b82f6", title: "1e293b", body: "334155", sub: "475569", highlight: "2563eb",
   },
   earthy: {
-    name: "Earthy Neutrals",
-    emoji: "🍂",
-    bg: "fafaf9",
-    accent: "a8a29e",
-    title: "44403c",
-    body: "57534e",
-    sub: "78716c",
-    highlight: "a8a29e",
+    name: "Earthy Neutrals", emoji: "🍂",
+    bg: "fafaf9", accent: "a8a29e", title: "44403c", body: "57534e", sub: "78716c", highlight: "a8a29e",
+  },
+  // ── New 15 ───────────────────────────────────────────────────────────────
+  pure_white: {
+    name: "Clean White", emoji: "🤍",
+    bg: "ffffff", accent: "1a1a1a", title: "111111", body: "333333", sub: "888888", highlight: "000000",
+  },
+  pure_black: {
+    name: "Pure Black", emoji: "🖤",
+    bg: "000000", accent: "eeeeee", title: "ffffff", body: "cccccc", sub: "888888", highlight: "ffffff",
+  },
+  dark_mode: {
+    name: "Dark Mode", emoji: "🌙",
+    bg: "1a1a2e", accent: "e94560", title: "eaeaea", body: "a8a8b8", sub: "6c6c7a", highlight: "e94560",
+  },
+  blue_corporate: {
+    name: "Blue Corporate", emoji: "🏢",
+    bg: "f0f4ff", accent: "1d4ed8", title: "1e3a5f", body: "374151", sub: "6b7280", highlight: "1d4ed8",
+  },
+  green_fresh: {
+    name: "Green Fresh", emoji: "🌱",
+    bg: "f0fdf4", accent: "16a34a", title: "14532d", body: "374151", sub: "6b7280", highlight: "15803d",
+  },
+  purple_dream: {
+    name: "Purple Dream", emoji: "💜",
+    bg: "1e1033", accent: "a855f7", title: "f3e8ff", body: "d8b4fe", sub: "9333ea", highlight: "c084fc",
+  },
+  modern_gradient_theme: {
+    name: "Modern Gradient", emoji: "🌊",
+    bg: "0f0c29", accent: "fc00ff", title: "ffffff", body: "e0e0ff", sub: "cc00cc", highlight: "00dbde",
+  },
+  minimal_clean: {
+    name: "Minimal Clean", emoji: "✨",
+    bg: "fafafa", accent: "374151", title: "111827", body: "4b5563", sub: "9ca3af", highlight: "1f2937",
+  },
+  creative_burst: {
+    name: "Creative Burst", emoji: "🎨",
+    bg: "1a0a2e", accent: "ff6b6b", title: "ffffff", body: "ffd93d", sub: "ff9f43", highlight: "ff6b6b",
+  },
+  business_pro: {
+    name: "Business Pro", emoji: "📊",
+    bg: "1f2937", accent: "6366f1", title: "f9fafb", body: "d1d5db", sub: "6b7280", highlight: "818cf8",
+  },
+  tech_dark: {
+    name: "Tech Dark", emoji: "💻",
+    bg: "0d1117", accent: "00ff41", title: "ffffff", body: "8b949e", sub: "3c4043", highlight: "00ff41",
+  },
+  education_blue: {
+    name: "Education Blue", emoji: "📚",
+    bg: "eff6ff", accent: "2563eb", title: "1e3a5f", body: "374151", sub: "6b7280", highlight: "1d4ed8",
+  },
+  startup_purple: {
+    name: "Startup Purple", emoji: "🚀",
+    bg: "13111c", accent: "8b5cf6", title: "ffffff", body: "c4b5fd", sub: "7c3aed", highlight: "a78bfa",
+  },
+  medical_clean: {
+    name: "Medical Clean", emoji: "⚕️",
+    bg: "f8fafc", accent: "0891b2", title: "0c4a6e", body: "374151", sub: "64748b", highlight: "0e7490",
+  },
+  finance_gold: {
+    name: "Finance Gold", emoji: "💰",
+    bg: "0f0e0a", accent: "d4af37", title: "f5f0e0", body: "b8a06a", sub: "7a6a3a", highlight: "f0c040",
   },
 };
 
-// ─── Font Styles ─────────────────────────────────────────────────────────────
+// ─── Font Styles ──────────────────────────────────────────────────────────────
 export const FONT_STYLES = {
-  modern: { heading: "Calibri", body: "Calibri" },
-  classic: { heading: "Times New Roman", body: "Georgia" },
-  tech: { heading: "Courier New", body: "Courier New" },
-  elegant: { heading: "Garamond", body: "Garamond" },
-  bold: { heading: "Arial Black", body: "Arial" },
-  premium: { heading: "Montserrat", body: "Open Sans" },
-  poppins: { heading: "Poppins", body: "Inter" },
-  serif_lux: { heading: "Playfair Display", body: "Lora" },
+  modern:    { heading: "Calibri",          body: "Calibri" },
+  classic:   { heading: "Times New Roman",  body: "Georgia" },
+  tech:      { heading: "Courier New",      body: "Courier New" },
+  elegant:   { heading: "Garamond",         body: "Garamond" },
+  bold:      { heading: "Arial Black",      body: "Arial" },
+  premium:   { heading: "Montserrat",       body: "Open Sans" },
 };
 
-// ─── Main generator ───────────────────────────────────────────────────────────
+// ─── Helper Functions ─────────────────────────────────────────────────────────
+function col(colorString) {
+  if (!colorString) return "000000";
+  return colorString.replace("#", "").toUpperCase();
+}
+
+export function validateSlides(slides) {
+  const warnings = [];
+  slides.forEach((slide, idx) => {
+    if (!slide.title) warnings.push(`Slide ${idx + 1} is missing a title.`);
+    if (slide.title && slide.title.length > 90) warnings.push(`Slide ${idx + 1} title is very long.`);
+    if (slide.bullets && slide.bullets.length > 8) warnings.push(`Slide ${idx + 1} has too many bullets (${slide.bullets.length}).`);
+    if (slide.type === "stats" && (!slide.stats || slide.stats.length === 0)) warnings.push(`Slide ${idx + 1} (Stats) is missing data.`);
+    if (slide.type === "timeline" && (!slide.timelineItems || slide.timelineItems.length === 0)) warnings.push(`Slide ${idx + 1} (Timeline) is missing events.`);
+    if (slide.image && !slide.image.startsWith("http")) warnings.push(`Slide ${idx + 1} image URL is invalid.`);
+  });
+  return warnings;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN GENERATOR
+// ═══════════════════════════════════════════════════════════════════════════════
+
 export async function generatePptx(slides, templateKey = "corporate", fontStyleKey = "modern") {
-  const tmpl = typeof templateKey === "object" ? templateKey : (TEMPLATES[templateKey] || TEMPLATES.corporate);
+  const tmpl  = typeof templateKey === "object"
+    ? templateKey
+    : (TEMPLATES[templateKey] || TEMPLATES.corporate);
   const fonts = FONT_STYLES[fontStyleKey] || FONT_STYLES.modern;
 
   const prs = new pptxgen();
-  prs.layout = "LAYOUT_WIDE"; // 13.33" x 7.5"
-  prs.author = "AI Presentation Studio";
+  prs.layout  = "LAYOUT_WIDE"; // 13.33" × 7.5"
+  prs.author  = "AI Presentation Studio";
+  prs.company = "VisionText AI";
   prs.subject = slides[0]?.title || "Presentation";
-  prs.title = slides[0]?.title || "Presentation";
+  prs.title   = slides[0]?.title || "Presentation";
 
-  for (const slide of slides) {
+  slides.forEach((slide, idx) => {
     const sl = prs.addSlide();
-    sl.background = { color: slide.bgColor || tmpl.bg };
+    const slideNum = idx + 1;
 
+    // Background
+    const bgColor = slide.bgColor ? col(slide.bgColor) : col(tmpl.bg);
+    sl.background = { color: bgColor };
 
+    // Get absolute elements (compile them if the user didn't edit this slide)
+    const elements = slide.elements && slide.elements.length > 0 
+        ? slide.elements 
+        : compileSlideToElements(slide, tmpl);
 
-    // Add Multiple Slide Images if present
-    const allImages = slide.images || (slide.image ? [slide.image] : []);
-    allImages.forEach((img, idx) => {
-      // Offset images if multiple
-      const xPos = 8.5 + (idx * 0.2);
-      const yPos = 1.5 + (idx * 0.2);
-      sl.addImage({
-        path: img,
-        x: xPos, y: yPos, w: 4.3, h: 4.8,
-        rounding: true,
-      });
+    elements.forEach(el => {
+      // Convert percentages (0-100) to inches (13.33 x 7.5)
+      const x = (el.x / 100) * 13.33;
+      const y = (el.y / 100) * 7.5;
+      const w = (el.w / 100) * 13.33;
+      const h = (el.h / 100) * 7.5;
+      const color = col(el.color);
+      const opacity = el.opacity !== undefined ? (1 - el.opacity) * 100 : 0; // pptxgenjs uses transparency 0-100%
+
+      if (el.type === "shape") {
+        sl.addShape(el.shape === "circle" ? prs.ShapeType.ellipse : prs.ShapeType.rect, {
+          x, y, w, h,
+          fill: { color, transparency: opacity },
+          line: { width: 0 }
+        });
+      } else if (el.type === "image") {
+        sl.addImage({
+          path: el.src,
+          x, y, w, h,
+          sizing: { type: "crop" } // Simulates objectFit: "cover"
+        });
+      } else {
+        // Text
+        sl.addText(el.text, {
+          x, y, w, h,
+          fontSize: el.fontSize * 0.75, // Scale down slightly to match HTML rendering sizes
+          color,
+          bold: !!el.bold,
+          italic: !!el.italic,
+          fontFace: el.bold ? fonts.heading : fonts.body,
+          align: el.align || "left",
+          valign: "top",
+          transparency: opacity,
+          margin: 4 // Give a tiny margin so it doesn't touch the edge of the invisible bounding box
+        });
+      }
     });
 
-    switch (slide.type) {
-      case "title":
-        renderTitleSlide(sl, prs, slide, tmpl, fonts);
-        break;
-      case "two-column":
-        renderTwoColumnSlide(sl, prs, slide, tmpl, fonts, !!slide.image);
-        break;
-      case "quote":
-        renderQuoteSlide(sl, prs, slide, tmpl, fonts);
-        break;
-      case "timeline":
-        renderTimelineSlide(sl, prs, slide, tmpl, fonts, !!slide.image);
-        break;
-      case "stats":
-        renderStatsSlide(sl, prs, slide, tmpl, fonts, !!slide.image);
-        break;
-      default:
-        renderContentSlide(sl, prs, slide, tmpl, fonts, !!slide.image);
+    if (slide.speaker_notes || slide.speakerNotes) {
+      sl.addNotes(slide.speaker_notes || slide.speakerNotes);
     }
-  }
-
-  // Return as Blob for browser download / upload
-  const blob = await prs.write({ outputType: "blob" });
-  return new Blob([blob], { type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
-}
-
-// ─── Slide Renderers ──────────────────────────────────────────────────────────
-
-function renderTitleSlide(sl, prs, slide, tmpl, fonts) {
-  // Big decorative circle
-  sl.addShape(prs.ShapeType.ellipse, {
-    x: 9.5, y: -1, w: 5, h: 5,
-    fill: { color: tmpl.accent, transparency: 85 },
-    line: { width: 0 },
+    
+    // Slide Number (if not first slide)
+    if (slideNum > 1) {
+      sl.addText(String(slideNum), {
+        x: 12.8, y: 7.1, w: 0.5, h: 0.3,
+        fontSize: 10, color: col(tmpl.sub), align: "right", transparency: 50
+      });
+    }
   });
 
-  sl.addText(slide.title || "Presentation", {
-    x: 0.8, y: 2.2, w: 11.5, h: 1.5,
-    fontSize: 60,
-    bold: true,
-    color: tmpl.title,
-    fontFace: fonts.heading,
-    align: "left",
-  });
-
-  if (slide.subtitle) {
-    sl.addText(slide.subtitle, {
-      x: 0.8, y: 4.1, w: 9, h: 1.2,
-      fontSize: 30,
-      color: tmpl.sub,
-      fontFace: fonts.body,
-      align: "left",
-    });
-  }
-
-  // Decorative accent stripe
-  sl.addShape(prs.ShapeType.rect, {
-    x: 0.8, y: 3.7, w: 1.5, h: 0.06,
-    fill: { color: tmpl.accent },
-    line: { width: 0 },
-  });
-}
-
-function renderContentSlide(sl, _prs, slide, tmpl, fonts, hasImage) {
-  const contentWidth = hasImage ? 7.5 : 11.5;
-
-  sl.addText(slide.title || "Slide", {
-    x: 0.5, y: 0.5, w: 12, h: 1.2,
-    fontSize: 60,
-    bold: true,
-    color: tmpl.highlight,
-    fontFace: fonts.heading,
-  });
-
-  const bullets = slide.bullets?.length ? slide.bullets : [];
-  if (bullets.length) {
-    const bulletText = bullets.map((b) => ({
-      text: b,
-      options: {
-        bullet: { type: "bullet" },
-        fontSize: hasImage ? 24 : 30,
-        color: tmpl.body,
-        fontFace: fonts.body,
-        paraSpaceBefore: 12,
-      },
-    }));
-    sl.addText(bulletText, {
-      x: 0.7, y: 1.8, w: contentWidth, h: 5.2,
-      fontFace: fonts.body,
-      color: tmpl.body,
-    });
-  }
-
-  if (slide.speakerNotes) sl.addNotes(slide.speakerNotes);
-}
-
-function renderTwoColumnSlide(sl, _prs, slide, tmpl, fonts, hasImage) {
-  const contentWidth = hasImage ? 7.5 : 12.3;
-  const colW = contentWidth / 2 - 0.5;
-
-  sl.addText(slide.title || "Comparison", {
-    x: 0.5, y: 0.5, w: 12, h: 1.2,
-    fontSize: 60,
-    bold: true,
-    color: tmpl.highlight,
-    fontFace: fonts.heading,
-  });
-
-  const left = slide.leftColumn || {};
-  const right = slide.rightColumn || {};
-
-  sl.addText(left.heading || "Left", {
-    x: 0.5, y: 1.8, w: colW, h: 0.8,
-    fontSize: 26,
-    bold: true,
-    color: tmpl.accent,
-    fontFace: fonts.heading,
-  });
-  const leftBullets = (left.bullets || []).map((b) => ({
-    text: b,
-    options: { bullet: { type: "bullet" }, fontSize: 20, color: tmpl.body, fontFace: fonts.body, paraSpaceBefore: 10 },
-  }));
-  if (leftBullets.length) {
-    sl.addText(leftBullets, { x: 0.5, y: 2.6, w: colW, h: 4.4 });
-  }
-
-  sl.addText(right.heading || "Right", {
-    x: 0.5 + colW + 0.5, y: 1.8, w: colW, h: 0.8,
-    fontSize: 26,
-    bold: true,
-    color: tmpl.accent,
-    fontFace: fonts.heading,
-  });
-  const rightBullets = (right.bullets || []).map((b) => ({
-    text: b,
-    options: { bullet: { type: "bullet" }, fontSize: 20, color: tmpl.body, fontFace: fonts.body, paraSpaceBefore: 10 },
-  }));
-  if (rightBullets.length) {
-    sl.addText(rightBullets, { x: 0.5 + colW + 0.5, y: 2.6, w: colW, h: 4.4 });
-  }
-
-  if (slide.speakerNotes) sl.addNotes(slide.speakerNotes);
-}
-
-function renderQuoteSlide(sl, prs, slide, tmpl, fonts) {
-  sl.addShape(prs.ShapeType.ellipse, {
-    x: 5.2, y: 1.5, w: 2.8, h: 2.8,
-    fill: { color: tmpl.accent, transparency: 90 },
-    line: { width: 0 },
-  });
-
-  sl.addText("\u201c", {
-    x: 0.5, y: 1.5, w: 2, h: 2,
-    fontSize: 160,
-    bold: true,
-    color: tmpl.accent,
-    fontFace: fonts.heading,
-    transparency: 40,
-  });
-
-  sl.addText(slide.quote || slide.title || "", {
-    x: 1.5, y: 2.2, w: 10, h: 3,
-    fontSize: 40,
-    italic: true,
-    color: tmpl.title,
-    fontFace: fonts.body,
-    align: "center",
-  });
-
-  if (slide.author) {
-    sl.addText(`\u2014 ${slide.author}`, {
-      x: 1.5, y: 5.8, w: 10, h: 1.0,
-      fontSize: 30,
-      color: tmpl.sub,
-      fontFace: fonts.body,
-      align: "center",
-    });
-  }
-
-  if (slide.speakerNotes) sl.addNotes(slide.speakerNotes);
-}
-
-function renderTimelineSlide(sl, _prs, slide, tmpl, fonts, hasImage) {
-  const contentWidth = hasImage ? 7.5 : 11.7;
-
-  sl.addText(slide.title || "Timeline", {
-    x: 0.5, y: 0.5, w: 12, h: 1.2,
-    fontSize: 60,
-    bold: true,
-    color: tmpl.highlight,
-    fontFace: fonts.heading,
-  });
-
-  const items = slide.timelineItems
-    || (slide.bullets || []).map((b, i) => ({ year: `Step ${i + 1}`, event: b }));
-
-  const lineY = 3.6;
-
-  // Horizontal spine
-  sl.addShape("line", {
-    x: 0.8, y: lineY, w: contentWidth, h: 0,
-    line: { color: tmpl.accent, width: 2 },
-  });
-
-  items.slice(0, 6).forEach((item, i) => {
-    const totalItems = items.slice(0, 6).length;
-    const count = Math.max(totalItems - 1, 1);
-    const x = 0.8 + (i * contentWidth) / count;
-
-    // Dot
-    sl.addShape("ellipse", {
-      x: x - 0.15, y: lineY - 0.15, w: 0.3, h: 0.3,
-      fill: { color: tmpl.accent },
-      line: { width: 0 },
-    });
-
-    // Year label
-    sl.addText(item.year || "", {
-      x: x - 0.8, y: lineY + 0.3, w: 1.6, h: 0.8,
-      fontSize: 20,
-      bold: true,
-      color: tmpl.accent,
-      fontFace: fonts.heading,
-      align: "center",
-    });
-
-    // Event text — alternate above/below
-    const yOff = i % 2 === 0 ? lineY - 1.8 : lineY + 1.2;
-    sl.addText(item.event || "", {
-      x: x - 1.0, y: yOff, w: 2.0, h: 1.6,
-      fontSize: 16,
-      color: tmpl.body,
-      fontFace: fonts.body,
-      align: "center",
-      wrap: true,
-    });
-  });
-
-  if (slide.speakerNotes) sl.addNotes(slide.speakerNotes);
-}
-
-function renderStatsSlide(sl, _prs, slide, tmpl, fonts, hasImage) {
-  sl.addText(slide.title || "Key Statistics", {
-    x: 0.5, y: 0.5, w: 12, h: 1.2,
-    fontSize: 60,
-    bold: true,
-    color: tmpl.highlight,
-    fontFace: fonts.heading,
-  });
-
-  const contentWidth = hasImage ? 7.5 : 12.3;
-  const stats = slide.stats || [];
-  const perRow = hasImage ? 2 : Math.min(stats.length, 3);
-  const colW = contentWidth / Math.max(perRow, 1);
-
-  stats.slice(0, 6).forEach((stat, i) => {
-    const col = i % perRow;
-    const row = Math.floor(i / perRow);
-    const x = 0.5 + col * colW;
-    const y = 2.0 + row * 2.8;
-
-    sl.addShape("rect", {
-      x, y, w: colW - 0.3, h: 2.4,
-      fill: { color: tmpl.accent, transparency: 88 },
-      line: { color: tmpl.accent, width: 1, transparency: 40 },
-    });
-
-    sl.addText(stat.value || "\u2014", {
-      x, y: y + 0.2, w: colW - 0.3, h: 1.2,
-      fontSize: 36,
-      bold: true,
-      color: tmpl.accent,
-      fontFace: fonts.heading,
-      align: "center",
-    });
-    sl.addText(stat.label || "", {
-      x, y: y + 1.5, w: colW - 0.3, h: 0.8,
-      fontSize: 18,
-      color: tmpl.body,
-      fontFace: fonts.body,
-      align: "center",
-    });
-  });
-
-  if (slide.speakerNotes) sl.addNotes(slide.speakerNotes);
+  return await prs.write("blob");
 }

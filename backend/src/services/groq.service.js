@@ -804,19 +804,35 @@ ${learningContext}
         let slidesArray = Array.isArray(parsedData) ? parsedData : (parsedData.slides || []);
         
         return slidesArray.map(s => {
-            // Map the new prompt format to the frontend's expected format
+            // Map prompt format to frontend's expected slide types
             const slideTypeMap = {
-               "title": "title",
-               "content": "content",
-               "two-column": "two-column",
-               "quote": "quote",
-               "timeline": "timeline",
-               "stats": "stats"
+               "title":       "title",
+               "section":     "section",
+               "agenda":      "agenda",
+               "content":     "content",
+               "two-column":  "two-column",
+               "twocolumn":   "two-column",
+               "image-full":  "image-full",
+               "fullimage":   "image-full",
+               "image":       "image",
+               "quote":       "quote",
+               "callout":     "callout",
+               "timeline":    "timeline",
+               "stats":       "stats",
+               "comparison":  "comparison",
+               "swot":        "swot",
+               "process":     "process",
+               "flow":        "process",
+               "table":       "table",
+               "chart":       "chart",
+               "thank-you":   "thank-you",
+               "thankyou":    "thank-you",
+               "conclusion":  "thank-you",
             };
-            const rawType = (s.slide_type || s.type || "").toLowerCase();
+            const rawType = (s.slide_type || s.type || "").toLowerCase().replace(/[_\s]/g, "-");
             let mappedType = "content";
             for (const [k, v] of Object.entries(slideTypeMap)) {
-               if (rawType.includes(k)) {
+               if (rawType === k || rawType.includes(k)) {
                    mappedType = v;
                    break;
                }
@@ -826,20 +842,24 @@ ${learningContext}
                 type: mappedType,
                 title: s.title || "Untitled Slide",
                 subtitle: s.subtitle || s.content || "",
-                bullets: s.bullet_points || s.bullets || [],
+                bullets: s.bullets || s.bullet_points || s.bulletPoints || [],
                 imageKeyword: s.visual_suggestion || s.imageKeyword || "",
                 speaker_notes: s.speaker_notes || "",
-                // Fallbacks just in case the AI generated old style
+                // Spread rest to preserve any extra fields the AI added
                 ...s
             };
             
-            // Map types specifically if we have content
+            // Ensure two-column has required structure
             if (mappedType === "two-column" && (!mapped.leftColumn || !mapped.rightColumn)) {
-                mapped.leftColumn = { heading: "Column 1", bullets: mapped.bullets.slice(0, Math.ceil(mapped.bullets.length/2)) };
-                mapped.rightColumn = { heading: "Column 2", bullets: mapped.bullets.slice(Math.ceil(mapped.bullets.length/2)) };
+                const half = Math.ceil(mapped.bullets.length / 2);
+                mapped.leftColumn  = { heading: "Column 1", bullets: mapped.bullets.slice(0, half) };
+                mapped.rightColumn = { heading: "Column 2", bullets: mapped.bullets.slice(half) };
             }
 
-            if (mapped.imageKeyword && mapped.imageKeyword.toLowerCase() !== "none" && mapped.imageKeyword.toLowerCase() !== "n/a") {
+            // Attach generated image URL from keyword
+            if (mapped.imageKeyword && !mapped.image &&
+                mapped.imageKeyword.toLowerCase() !== "none" &&
+                mapped.imageKeyword.toLowerCase() !== "n/a") {
                 const seed = Math.floor(Math.random() * 1000000);
                 mapped.image = `https://image.pollinations.ai/prompt/${encodeURIComponent(mapped.imageKeyword)}?width=800&height=600&seed=${seed}&model=flux&nologo=true`;
             }
@@ -860,21 +880,41 @@ export const generatePPTOutline = async (topic, slideCount = 8, styleGuide = nul
     const structureContext = structure ? `\nPRESENTATION STRUCTURE / FLOW: The outline must be designed strictly following the "${structure}" narrative flow structure. Ensure the sequence and logical progression of slide topics align perfectly with this structure.\n` : "";
     const allowImages = hasImageRequest(topic);
 
+    const allTypes = allowImages
+        ? '"title", "section", "agenda", "content", "two-column", "image", "image-full", "quote", "callout", "timeline", "stats", "comparison", "swot", "process", "table", "chart", "thank-you"'
+        : '"title", "section", "agenda", "content", "two-column", "quote", "callout", "timeline", "stats", "comparison", "swot", "process", "table", "chart", "thank-you"';
+
     const systemPrompt = `You are a presentation outline generator. Output a JSON object with one key "outline" whose value is an ARRAY of slide objects.
 
 EXAMPLE of correct output:
-{"outline":[{"type":"title","title":"Introduction to AI","description":"Overview of AI and its impact"},{"type":"content","title":"What is AI?","description":"Definition and key concepts"},{"type":"stats","title":"AI by the Numbers","description":"Key statistics and growth data"}]}
+{"outline":[{"type":"title","title":"Introduction to AI","description":"Overview of AI and its impact"},{"type":"content","title":"What is AI?","description":"Definition and key concepts"},{"type":"stats","title":"AI by the Numbers","description":"Key statistics and growth data"},{"type":"thank-you","title":"Thank You","description":"Closing and Q&A"}]}
 
 STRICT RULES:
 1. Return ONLY the JSON object. No markdown. No explanations.
 2. "outline" MUST be an array of slides.
 3. Each slide MUST have "type", "title", "description".
-4. Valid types: ${allowImages ? '"title", "content", "image", "two-column", "quote", "timeline", "stats"' : '"title", "content", "two-column", "quote", "timeline", "stats"'}
-5. First slide must be type "title". Last slide must be a conclusion.
-6. ${isAuto ? "Generate 7-10 slides for the topic depth." : `Generate EXACTLY ${slideCount} slides.`}
-7. EXACT USER STRUCTURE: If the user provides a specific slide-by-slide outline, use EXACTLY their outline and text. Do not invent your own structure if they provided one.
-8. VARY FORMAT BY TOPIC: If no exact outline is provided, adapt slide types dynamically to the prompt. Avoid repetitive sequences.
-9. NO EMPTY SLIDES: Every slide must be specific and strictly relevant. No filler. No empty place holder slides.
+4. Valid types: ${allTypes}
+5. First slide MUST be type "title". Last slide SHOULD be type "thank-you" or a strong conclusion.
+6. ${isAuto ? "Generate 8-12 slides for the topic depth." : `Generate EXACTLY ${slideCount} slides.`}
+7. TYPE GUIDE — use the right type for the content:
+   - "section": Chapter/topic divider between major segments
+   - "agenda": Overview of topics at the beginning
+   - "stats": When presenting numbers, percentages, or data points
+   - "timeline": Chronological events, historical facts, roadmaps
+   - "two-column": Side-by-side comparison, pros/cons, before/after
+   - "swot": Strengths, Weaknesses, Opportunities, Threats analysis
+   - "process": Step-by-step workflows, how-to, procedures
+   - "comparison": Feature comparison tables
+   - "table": Structured data with rows and columns
+   - "chart": Visual data representation (bar chart placeholder)
+   - "quote": Famous quotes, key statements
+   - "callout": Key insight or highlighted fact
+   - "image": Visual with supporting bullets
+   - "image-full": Full bleed visual with minimal text
+   - "content": Default bullets-based slide
+8. EXACT USER STRUCTURE: If the user provides a specific slide-by-slide outline, use EXACTLY their outline and text.
+9. VARY FORMAT BY TOPIC: Adapt slide types dynamically. Avoid repetitive type sequences.
+10. NO EMPTY SLIDES: Every slide must be specific and strictly relevant.
 ${styleContext}${learningContext}${structureContext}`;
 
     let lastError = null;
@@ -1001,7 +1041,7 @@ export const generateNewInsertedSlide = async (topic, currentSlides, insertIndex
     GOAL: Create a slide that bridges the content or adds missing depth.
     - ${styleContext}
     - IMPORTANT: Use styleGuide ONLY for visual theming. DO NOT use its content.
-    - Choose fitting type: ${allowImages ? '"content", "image", "two-column", "quote", "timeline", "stats"' : '"content", "two-column", "quote", "timeline", "stats"'}.
+    - Choose fitting type: ${allowImages ? '"content", "image", "image-full", "two-column", "quote", "callout", "timeline", "stats", "comparison", "swot", "process", "table", "chart"' : '"content", "two-column", "quote", "callout", "timeline", "stats", "comparison", "swot", "process", "table", "chart"'}.
     ${learningContext}
     - Respond strictly with JSON for ONE slide object.`;
 
@@ -1036,13 +1076,23 @@ export const generateSingleSlideContent = async (topic, outline, slideIndex, sty
     const styleContext = styleGuide ? `Style (colors/fonts only): ${JSON.stringify(styleGuide).slice(0, 200)}` : "";
 
     const typeExamples = {
-        "title":      `{"type": "title", "title": "Catchy Title", "subtitle": "A one-line tagline"}`,
-        "content":    `{"type": "content", "title": "Main Point", "bullets": ["Fact 1", "Fact 2", "Fact 3"]}`,
-        "image":      `{"type": "image", "title": "Visual Concept", "bullets": ["Detail 1", "Detail 2"], "imageKeyword": "photorealistic abstract concept"}`,
-        "two-column": `{"type": "two-column", "title": "Comparison", "leftColumn": {"heading": "Pros", "bullets": ["Point 1", "Point 2"]}, "rightColumn": {"heading": "Cons", "bullets": ["Point 1", "Point 2"]}}`,
-        "quote":      `{"type": "quote", "title": "Expert Insight", "quote": "The actual quote text", "author": "Name or Role"}`,
-        "timeline":   `{"type": "timeline", "title": "History", "timelineItems": [{"year": "2023", "event": "Launched"}, {"year": "2024", "event": "Expanded"}]}`,
-        "stats":      `{"type": "stats", "title": "By the Numbers", "stats": [{"label": "Growth", "value": "150%"}, {"label": "Users", "value": "1M+"}]}`,
+        "title":      `{"type": "title", "title": "Catchy Title", "subtitle": "A compelling one-line tagline", "speaker_notes": "Welcome the audience."}`,
+        "section":    `{"type": "section", "title": "Section 2: Core Concepts", "subtitle": "Deep dive into the fundamentals", "sectionNumber": "02"}`,
+        "agenda":     `{"type": "agenda", "title": "Agenda", "agendaItems": ["Introduction", "Core Concepts", "Applications", "Summary"]}`,
+        "content":    `{"type": "content", "title": "Main Point", "bullets": ["Fact 1 with detail", "Fact 2 with context", "Fact 3 with example"], "speaker_notes": "Explain each bullet."}`,
+        "image":      `{"type": "image", "title": "Visual Concept", "bullets": ["Detail 1", "Detail 2"], "imageKeyword": "photorealistic modern technology abstract", "speaker_notes": "Refer to the visual."}`,
+        "image-full": `{"type": "image-full", "title": "The Big Picture", "subtitle": "Short caption here", "imageKeyword": "dramatic landscape wide cinematic"}`,
+        "two-column": `{"type": "two-column", "title": "Comparison", "leftColumn": {"heading": "Traditional Approach", "bullets": ["Slow process", "Manual effort", "High cost"]}, "rightColumn": {"heading": "Modern Approach", "bullets": ["Automated", "AI-powered", "Cost-efficient"]}}`,
+        "quote":      `{"type": "quote", "title": "Expert Insight", "quote": "The actual inspirational or factual quote here.", "author": "Name, Title or Organization"}`,
+        "callout":    `{"type": "callout", "title": "Key Insight", "quote": "The single most important fact or insight from this section.", "author": "Source or Context"}`,
+        "timeline":   `{"type": "timeline", "title": "Historical Timeline", "timelineItems": [{"year": "2020", "event": "First milestone reached"}, {"year": "2022", "event": "Major expansion"}, {"year": "2024", "event": "Global adoption"}]}`,
+        "stats":      `{"type": "stats", "title": "By the Numbers", "stats": [{"label": "Market Growth", "value": "47%"}, {"label": "Active Users", "value": "2.5B"}, {"label": "Revenue Increase", "value": "$1.2T"}, {"label": "Countries", "value": "195"}]}`,
+        "comparison": `{"type": "comparison", "title": "Feature Comparison", "tableHeaders": ["Feature", "Option A", "Option B"], "tableData": [["Speed", "Fast", "Slow"], ["Cost", "Low", "High"], ["Scalability", "High", "Medium"]]}`,
+        "swot":       `{"type": "swot", "title": "SWOT Analysis", "swotItems": {"strengths": ["Strong brand", "Innovation"], "weaknesses": ["High cost", "Limited reach"], "opportunities": ["Emerging markets", "AI adoption"], "threats": ["Competition", "Regulation"]}}`,
+        "process":    `{"type": "process", "title": "How It Works", "processSteps": ["Collect Data", "Analyze", "Generate Insights", "Act", "Review"]}`,
+        "table":      `{"type": "table", "title": "Data Overview", "tableHeaders": ["Category", "Value", "Change"], "tableData": [["Revenue", "$5M", "+12%"], ["Users", "50K", "+34%"], ["Satisfaction", "94%", "+5%"]]}`,
+        "chart":      `{"type": "chart", "title": "Performance Metrics", "stats": [{"label": "Q1", "value": 65}, {"label": "Q2", "value": 78}, {"label": "Q3", "value": 82}, {"label": "Q4", "value": 95}]}`,
+        "thank-you":  `{"type": "thank-you", "title": "Thank You!", "subtitle": "Questions & Discussion", "contact": "email@example.com"}`,
     };
     const example = typeExamples[slideMeta.type] || typeExamples["content"];
 
@@ -1058,10 +1108,16 @@ ${example}
 
 STRICT RULES:
 1. Return ONLY valid JSON. No markdown. No explanations.
-2. Fill the JSON with highly accurate, educational, and specific content.
-3. NEVER leave arrays empty (bullets, timelineItems, stats). Provide 3-5 items. NO EMPTY SLIDES ALLOWED.
-4. "imageKeyword" is optional.
-5. Emulate ChatGPT's clear, deep, and structured output.
+2. Fill the JSON with highly accurate, educational, and specific real-world content.
+3. NEVER leave arrays empty. Provide 3-6 items for bullets, timelineItems, stats, processSteps, agendaItems, tableData.
+4. "imageKeyword" is optional, use only for image/image-full types.
+5. Always include "speaker_notes" with a brief 1-2 sentence speaking cue.
+6. For "stats" type, values must be real numbers/percentages/amounts (e.g. "47%", "$2.3B", "120M").
+7. For "swot" type, MUST include all four keys: strengths, weaknesses, opportunities, threats.
+8. For "comparison" and "table" types, MUST include tableHeaders and tableData arrays.
+9. For "process" type, MUST include processSteps array.
+10. KEEP TEXT EXTREMELY SHORT, PUNCHY, AND CONCISE. Write like a professional consultant making a high-impact presentation (like ChatGPT). Max 10-15 words per bullet point. No walls of text.
+11. EXACT KEYS ONLY: Use exactly the keys shown in the example (e.g., use "bullets", NEVER "bullet_points" or "content").
 ${styleContext}${learningContext}`;
 
     let lastError = null;
@@ -1088,6 +1144,11 @@ ${styleContext}${learningContext}`;
                 const match = raw.match(/```(?:json)?\s*([\s\S]*?)```/) || raw.match(/(\{[\s\S]*\})/);
                 if (match) slide = JSON.parse(match[1]);
                 else throw new Error("Invalid JSON");
+            }
+
+            // Normalize bullet keys just in case the AI ignored instructions
+            if (!slide.bullets && (slide.bullet_points || slide.bulletPoints)) {
+                slide.bullets = slide.bullet_points || slide.bulletPoints;
             }
 
             if (slide.imageKeyword) {

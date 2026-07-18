@@ -232,6 +232,16 @@ export async function getPptHistoryById(id) {
   return data.data;
 }
 
+export async function updatePptHistory(id, updateData) {
+  const res = await fetch(`${BASE}/history/${id}`, {
+    method: "PUT",
+    headers: getHeaders(),
+    body: JSON.stringify(updateData),
+  });
+  const data = await handleResponse(res, "Update PPT History");
+  return data.data;
+}
+
 export async function saveExtractHistory(historyData) {
   const res = await fetch(`${BASE}/extract-history`, {
     method: "POST",

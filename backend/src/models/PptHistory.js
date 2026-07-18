@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 
 const pptHistorySchema = new mongoose.Schema({
-    sessionId: { type: String, index: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
+    sessionId: { type: String, index: true }, // Legacy
     prompt: { type: String, required: true },
     slideCount: { type: Number, required: true },
     template: { type: String, required: true },
