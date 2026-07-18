@@ -66,9 +66,12 @@ const login = async (req, res) => {
         if (!isPasswordValid) {
             return res.status(400).json({ message: "Invalid password" })
         }
-        const token = genToken();
-        user.token = token;
-        await user.save();
+        let token = user.token;
+        if (!token) {
+            token = genToken();
+            user.token = token;
+            await user.save();
+        }
         res.cookie("token", token, {
             maxAge: 1000 * 60 * 60 * 24 * 7,
             httpOnly: true,

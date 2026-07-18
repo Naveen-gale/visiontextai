@@ -2,7 +2,7 @@ import { User } from "../models/authmodel.js";
 
 export const requireAuth = async (req, res, next) => {
     try {
-        let token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
+        let token = req.headers.authorization?.split(" ")[1] || req.cookies?.token;
         if (!token) {
             return res.status(401).json({ success: false, message: "Unauthorized. Please log in." });
         }

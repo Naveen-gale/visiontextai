@@ -8,7 +8,8 @@ export default function Header() {
   const [user, setUser] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const profileRef = useRef(null);
+  const desktopProfileRef = useRef(null);
+  const mobileProfileRef = useRef(null);
 
   useEffect(() => {
     const userStr = localStorage.getItem("user");
@@ -29,7 +30,9 @@ export default function Header() {
   // Close profile menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (profileRef.current && !profileRef.current.contains(e.target)) {
+      const clickedDesktop = desktopProfileRef.current && desktopProfileRef.current.contains(e.target);
+      const clickedMobile = mobileProfileRef.current && mobileProfileRef.current.contains(e.target);
+      if (!clickedDesktop && !clickedMobile) {
         setShowProfileMenu(false);
       }
     };
@@ -71,7 +74,7 @@ export default function Header() {
         <div className="w-px h-6 bg-slate-800 mx-1"></div>
 
         {user ? (
-          <div className="relative cursor-pointer" ref={profileRef}>
+          <div className="relative cursor-pointer" ref={desktopProfileRef}>
             <div onClick={() => setShowProfileMenu(!showProfileMenu)} className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-semibold text-slate-200 text-sm hover:border-indigo-500 transition-colors">
               {user.name ? user.name[0].toUpperCase() : "U"}
             </div>
@@ -100,7 +103,7 @@ export default function Header() {
       {/* Mobile Hamburger Button */}
       <div className="md:hidden flex items-center gap-4">
         {user && (
-          <div className="relative cursor-pointer" ref={profileRef}>
+          <div className="relative cursor-pointer" ref={mobileProfileRef}>
             <div onClick={() => setShowProfileMenu(!showProfileMenu)} className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-semibold text-slate-200 text-sm hover:border-indigo-500 transition-colors">
               {user.name ? user.name[0].toUpperCase() : "U"}
             </div>
