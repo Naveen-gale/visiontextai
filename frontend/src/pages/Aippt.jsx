@@ -1208,6 +1208,7 @@ export default function Aippt() {
     setSlides([]);
     pptBlobRef.current = null;
     setShareUrl(null);
+    setLastSavedId(null);
 
     try {
       // 1. Analyze reference if provided
@@ -1446,6 +1447,8 @@ export default function Aippt() {
     try {
       let finalId = lastSavedId;
       
+      const { updatePptHistory } = await import("../utils/api");
+
       // If not saved yet, save now
       if (!finalId) {
         const res = await savePptHistory({
@@ -1457,6 +1460,9 @@ export default function Aippt() {
         });
         finalId = res._id;
         setLastSavedId(finalId);
+      } else {
+        // If it was already saved, we must update it with the latest edits before sharing!
+        await updatePptHistory(finalId, { slides, template, fontStyle, prompt });
       }
 
       if (finalId) {
