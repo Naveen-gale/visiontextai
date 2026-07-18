@@ -494,7 +494,8 @@ export const predictTheme = async (req, res) => {
     }
     
     try {
-        const flaskUrl = process.env.FLASK_API_URL || "http://127.0.0.1:5001";
+        let flaskUrl = process.env.FLASK_API_URL || "http://127.0.0.1:5001";
+        flaskUrl = flaskUrl.replace(/\/+$/, "");
         const response = await fetch(`${flaskUrl}/predict-theme`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -538,7 +539,8 @@ export const predictStructure = async (req, res) => {
     }
     
     try {
-        const flaskUrl = process.env.FLASK_API_URL || "http://127.0.0.1:5001";
+        let flaskUrl = process.env.FLASK_API_URL || "http://127.0.0.1:5001";
+        flaskUrl = flaskUrl.replace(/\/+$/, "");
         const response = await fetch(`${flaskUrl}/predict-structure`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
